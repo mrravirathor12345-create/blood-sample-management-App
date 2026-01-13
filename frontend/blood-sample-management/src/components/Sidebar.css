@@ -1,0 +1,141 @@
+.sidebar {
+  width: 260px;
+  height: calc(100vh - 70px);
+  padding: 20px 0;
+  position: sticky;
+  top: 70px;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  background: var(--sidebar-bg, rgba(255, 255, 255, 0.5));
+}
+
+.sidebar-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 10px;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 14px 20px;
+  text-decoration: none;
+  color: var(--text-color, #333);
+  font-weight: 500;
+  transition: all 0.3s ease;
+  border-radius: 12px;
+  margin: 0 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, rgba(229, 57, 53, 0.1), rgba(255, 107, 107, 0.1));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.sidebar-item:hover {
+  background-color: var(--hover-bg, rgba(0, 0, 0, 0.05));
+  transform: translateX(5px);
+}
+
+.sidebar-item:hover::before {
+  opacity: 1;
+}
+
+.sidebar-item.active {
+  background-color: var(--active-bg, rgba(229, 57, 53, 0.15));
+  color: var(--primary-color, #e53935);
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(229, 57, 53, 0.2);
+}
+
+.sidebar-item.active::before {
+  opacity: 1;
+}
+
+.sidebar-item.active .material-icons {
+  color: var(--primary-color, #e53935);
+}
+
+.material-icons {
+  font-size: 1.3rem;
+  transition: all 0.3s ease;
+}
+
+.sidebar-label {
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.sidebar-item:hover .material-icons {
+  transform: scale(1.1);
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    height: auto;
+    padding: 15px 0;
+    position: relative;
+    top: 0;
+    background: var(--card-bg, rgba(255, 255, 255, 0.7));
+  }
+  
+  .sidebar-menu {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 0 15px;
+    gap: 5px;
+  }
+  
+  .sidebar-item {
+    border-radius: 20px;
+    margin: 0 5px;
+    white-space: nowrap;
+    padding: 12px 18px;
+  }
+  
+  .sidebar-item.active {
+    border-left: none;
+    border-bottom: 3px solid var(--primary-color, #e53935);
+    box-shadow: 0 2px 8px rgba(229, 57, 53, 0.2);
+  }
+  
+  .sidebar-label {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    padding: 10px 0;
+  }
+  
+  .sidebar-menu {
+    padding: 0 10px;
+  }
+  
+  .sidebar-item {
+    padding: 10px 15px;
+    gap: 10px;
+  }
+  
+  .material-icons {
+    font-size: 1.1rem;
+  }
+  
+  .sidebar-label {
+    font-size: 0.85rem;
+  }
+}
