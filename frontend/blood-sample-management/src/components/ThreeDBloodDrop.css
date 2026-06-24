@@ -1,0 +1,13 @@
+.three-drop {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.14), transparent 30%);
+  box-shadow: inset 0 0 16px rgba(255, 255, 255, 0.08), 0 16px 40px rgba(255, 19, 79, 0.18);
+}
+
+.three-drop canvas {
+  width: 100% !important;
+  height: 100% !important;
+}

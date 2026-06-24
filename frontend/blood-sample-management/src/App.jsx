@@ -1,5 +1,11 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { NotificationsProvider } from './context/NotificationsContext';
+import ToastProvider from './components/ToastProvider';
+import ProtectedRoute from './components/ProtectedRoute';
+import ParticleBackground from './components/ParticleBackground';
 import Dashboard from './components/Dashboard';
 import PatientRegistration from './components/PatientRegistration';
 import SampleCollection from './components/SampleCollection';
@@ -16,37 +22,77 @@ import Login from './components/Login';
 import Register from './components/Register';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
+import BarcodeScanner from './components/BarcodeScanner';
+import AppointmentScheduler from './components/AppointmentScheduler';
+import InventoryTracker from './components/InventoryTracker';
 import './App.css';
+
+const AppContent = () => {
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+
+  return (
+    <div className="app">
+      <ParticleBackground />
+      {isAuthenticated && <Navbar />}
+      <div className="main-content">
+        {isAuthenticated && <Sidebar />}
+        <div className={isAuthenticated ? 'content content-authenticated' : 'content'}>
+          <AnimatePresence mode="wait">
+            <Routes location={location} key={location.pathname}>
+              <Route path="/login"    element={<Login />} />
+              <Route path="/register" element={<Register />} />
+
+              {/* Core */}
+              <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+
+              {/* Patients */}
+              <Route path="/patients/register" element={<ProtectedRoute><PatientRegistration /></ProtectedRoute>} />
+
+              {/* Samples */}
+              <Route path="/samples/collection" element={<ProtectedRoute><SampleCollection /></ProtectedRoute>} />
+              <Route path="/samples/tracking"   element={<ProtectedRoute><SampleTracking /></ProtectedRoute>} />
+              <Route path="/samples/scanner"    element={<ProtectedRoute><BarcodeScanner /></ProtectedRoute>} />
+
+              {/* Tests */}
+              <Route path="/tests/assignment" element={<ProtectedRoute><TestAssignment /></ProtectedRoute>} />
+              <Route path="/tests/results"    element={<ProtectedRoute><TestResultsEntry /></ProtectedRoute>} />
+
+              {/* Doctors & Reports */}
+              <Route path="/doctors/review"     element={<ProtectedRoute><DoctorReview /></ProtectedRoute>} />
+              <Route path="/reports/generation" element={<ProtectedRoute><ReportGeneration /></ProtectedRoute>} />
+
+              {/* Analytics */}
+              <Route path="/analytics"    element={<ProtectedRoute><AnalyticsDashboard /></ProtectedRoute>} />
+              <Route path="/ai-analytics" element={<ProtectedRoute><AIAnalysisDashboard /></ProtectedRoute>} />
+
+              {/* New Features */}
+              <Route path="/appointments" element={<ProtectedRoute><AppointmentScheduler /></ProtectedRoute>} />
+              <Route path="/inventory"    element={<ProtectedRoute><InventoryTracker /></ProtectedRoute>} />
+
+              {/* Admin */}
+              <Route path="/admin"   element={<ProtectedRoute><AdminControlCenter /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
+            </Routes>
+          </AnimatePresence>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 function App() {
   return (
-    <Router>
-      <div className="app">
-        <Navbar />
-        <div className="main-content">
-          <Sidebar />
-          <div className="content">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/patients/register" element={<PatientRegistration />} />
-              <Route path="/samples/collection" element={<SampleCollection />} />
-              <Route path="/samples/tracking" element={<SampleTracking />} />
-              <Route path="/tests/assignment" element={<TestAssignment />} />
-              <Route path="/tests/results" element={<TestResultsEntry />} />
-              <Route path="/doctors/review" element={<DoctorReview />} />
-              <Route path="/reports/generation" element={<ReportGeneration />} />
-              <Route path="/analytics" element={<AnalyticsDashboard />} />
-              <Route path="/ai-analytics" element={<AIAnalysisDashboard />} />
-              <Route path="/admin" element={<AdminControlCenter />} />
-              <Route path="/profile" element={<UserProfile />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-            </Routes>
-          </div>
-        </div>
-      </div>
-    </Router>
+    <AuthProvider>
+      <NotificationsProvider>
+        <ToastProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </ToastProvider>
+      </NotificationsProvider>
+    </AuthProvider>
   );
 }
 

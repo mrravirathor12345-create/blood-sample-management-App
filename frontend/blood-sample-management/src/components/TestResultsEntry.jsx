@@ -1,35 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import api from '../services/apiService';
+import { toast } from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 import './TestResultsEntry.css';
 
 const TestResultsEntry = () => {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSample, setSelectedSample] = useState(null);
   const [testResults, setTestResults] = useState([]);
+  const [samples, setSamples] = useState([]);
+  const [doctors, setDoctors] = useState([]);
+  const [assignedDoctor, setAssignedDoctor] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Mock data for samples with assigned tests
-  const mockSamples = [
-    {
-      id: 'SMP00000125',
-      patient: 'John Doe',
-      status: 'Processing',
-      collectionDate: '2023-09-15',
-      tests: [
-        { id: 'TST00001', name: 'Complete Blood Count (CBC)', status: 'Pending' },
-        { id: 'TST00002', name: 'Lipid Profile', status: 'Pending' }
-      ]
-    },
-    {
-      id: 'SMP00000124',
-      patient: 'Jane Smith',
-      status: 'Processing',
-      collectionDate: '2023-09-15',
-      tests: [
-        { id: 'TST00003', name: 'Liver Function Test', status: 'Pending' },
-        { id: 'TST00006', name: 'Blood Glucose', status: 'Pending' }
-      ]
-    }
-  ];
+  // Load samples and doctors from backend
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [samplesRes, doctorsRes] = await Promise.all([
+          api.get('/samples'),
+          api.get('/doctors')
+        ]);
+        const processingSamples = samplesRes.data.filter(s => s.status === 'Processing');
+        setSamples(processingSamples);
+        setDoctors(doctorsRes.data);
+      } catch (err) {
+        toast.error('Failed to load samples or doctors.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   // Mock reference ranges for tests
   const referenceRanges = {
@@ -57,7 +62,24 @@ const TestResultsEntry = () => {
     }
   };
 
-  const filteredSamples = mockSamples.filter(sample =>
+  // Map to local UI structure
+  const mappedSamples = samples.map(s => ({
+    _id: s._id,
+    id: s.sampleId,
+    patientId: s.patient?.patientId || '',
+    patient: s.patient ? `${s.patient.firstName} ${s.patient.lastName}` : 'Unknown',
+    patientObjId: s.patient?._id || s.patient,
+    status: s.status,
+    collectionDate: new Date(s.collectionDate).toLocaleDateString(),
+    tests: s.testsAssigned?.map(t => ({
+      id: t._id,
+      code: t.testCode,
+      name: t.testName,
+      status: 'Pending'
+    })) || []
+  }));
+
+  const filteredSamples = mappedSamples.filter(sample =>
     sample.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
     sample.patient.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -69,15 +91,22 @@ const TestResultsEntry = () => {
     const initialResults = sample.tests.map(test => ({
       testId: test.id,
       testName: test.name,
-      parameters: referenceRanges[test.id] ? 
-        Object.keys(referenceRanges[test.id]).map(param => ({
+      parameters: referenceRanges[test.code] ? 
+        Object.keys(referenceRanges[test.code]).map(param => ({
           name: param,
           value: '',
-          unit: referenceRanges[test.id][param].unit,
-          min: referenceRanges[test.id][param].min,
-          max: referenceRanges[test.id][param].max,
+          unit: referenceRanges[test.code][param].unit,
+          min: referenceRanges[test.code][param].min,
+          max: referenceRanges[test.code][param].max,
           status: ''
-        })) : [],
+        })) : [{
+          name: test.name,
+          value: '',
+          unit: 'units',
+          min: 0,
+          max: 100,
+          status: ''
+        }],
       remarks: '',
       verified: false
     }));
@@ -114,11 +143,11 @@ const TestResultsEntry = () => {
     setTestResults(updatedResults);
   };
 
-  const handleSubmitResults = (e) => {
+  const handleSubmitResults = async (e) => {
     e.preventDefault();
     
     if (!selectedSample) {
-      alert('Please select a sample first');
+      toast.error('Please select a sample first');
       return;
     }
     
@@ -128,22 +157,64 @@ const TestResultsEntry = () => {
     );
     
     if (isIncomplete) {
-      alert('Please fill in all test result values');
+      toast.error('Please fill in all test result values');
       return;
     }
-    
-    // In a real app, this would send data to the backend
-    console.log('Test Results:', {
-      sampleId: selectedSample.id,
-      results: testResults
-    });
-    
-    alert(`Test results for sample ${selectedSample.id} submitted successfully!`);
-    
-    // Reset form
-    setSelectedSample(null);
-    setTestResults([]);
-    setSearchTerm('');
+
+    if (!assignedDoctor) {
+      toast.error('Please select a doctor for review');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // 1. Post report to /reports
+      const reportPayload = {
+        sample: selectedSample._id,
+        patient: selectedSample.patientObjId,
+        technician: user?.id || null,
+        doctor: assignedDoctor || null,
+        testResults: testResults.map(tr => {
+          const hasAbnormal = tr.parameters.some(p => p.status === 'Low' || p.status === 'High');
+          const status = hasAbnormal ? 'Abnormal' : 'Normal';
+          
+          return {
+            test: tr.testId,
+            resultValue: tr.parameters.reduce((acc, p) => {
+              acc[p.name] = Number(p.value) || p.value;
+              return acc;
+            }, {}),
+            unit: tr.parameters[0]?.unit || '',
+            status: status,
+            remarks: tr.remarks,
+            verified: false
+          };
+        })
+      };
+
+      await api.post('/reports', reportPayload);
+
+      // 2. Update Sample status to 'Processed'
+      await api.patch(`/samples/${selectedSample._id}/status`, {
+        status: 'Processed'
+      });
+
+      toast.success(`Test results for sample ${selectedSample.id} submitted successfully!`);
+      
+      // Remove successfully submitted sample from list
+      setSamples(prev => prev.filter(s => s._id !== selectedSample._id));
+      
+      // Reset form
+      setSelectedSample(null);
+      setTestResults([]);
+      setSearchTerm('');
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Error submitting test results';
+      toast.error(errorMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -269,9 +340,42 @@ const TestResultsEntry = () => {
                 ))}
               </div>
               
+              <div className="doctor-assign-section" style={{ marginTop: '24px', marginBottom: '24px' }}>
+                <label htmlFor="assign-doctor" style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '0.9rem', color: 'rgba(210, 185, 225, 0.82)' }}>
+                  Assign Doctor for Review *
+                </label>
+                <select
+                  id="assign-doctor"
+                  value={assignedDoctor}
+                  onChange={(e) => setAssignedDoctor(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    backgroundColor: 'rgba(15, 8, 25, 0.6)',
+                    color: '#fff',
+                    outline: 'none',
+                    fontSize: '0.95rem',
+                    cursor: 'pointer'
+                  }}
+                  required
+                  disabled={isSubmitting}
+                >
+                  <option value="">Select Doctor</option>
+                  {doctors.map(doc => (
+                    <option key={doc._id} value={doc._id}>
+                      Dr. {doc.firstName} {doc.lastName} ({doc.department || 'General'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
               <div className="form-actions">
-                <button type="button" className="cancel-btn">Cancel</button>
-                <button type="submit" className="submit-btn">Submit Results</button>
+                <button type="button" className="cancel-btn" disabled={isSubmitting}>Cancel</button>
+                <button type="submit" className="submit-btn" disabled={isSubmitting}>
+                  {isSubmitting ? 'Submitting...' : 'Submit Results'}
+                </button>
               </div>
             </form>
           ) : (

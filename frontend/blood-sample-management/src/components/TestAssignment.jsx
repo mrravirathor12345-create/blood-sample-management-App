@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import api from '../services/apiService';
+import { toast } from 'react-hot-toast';
 import './TestAssignment.css';
 
 const TestAssignment = () => {
@@ -7,43 +9,31 @@ const TestAssignment = () => {
   const [selectedSample, setSelectedSample] = useState(null);
   const [selectedTests, setSelectedTests] = useState([]);
   const [assignedTechnician, setAssignedTechnician] = useState('');
+  const [samples, setSamples] = useState([]);
+  const [availableTests, setAvailableTests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Mock data for samples
-  const mockSamples = [
-    {
-      id: 'SMP00000125',
-      patient: 'John Doe',
-      status: 'Collected',
-      collectionDate: '2023-09-15',
-      sampleType: 'Whole Blood'
-    },
-    {
-      id: 'SMP00000124',
-      patient: 'Jane Smith',
-      status: 'Collected',
-      collectionDate: '2023-09-15',
-      sampleType: 'Plasma'
-    },
-    {
-      id: 'SMP00000123',
-      patient: 'Robert Johnson',
-      status: 'Collected',
-      collectionDate: '2023-09-14',
-      sampleType: 'Serum'
-    }
-  ];
-
-  // Mock data for available tests
-  const availableTests = [
-    { id: 'TST00001', name: 'Complete Blood Count (CBC)', category: 'Hematology', turnaround: '24 hrs', cost: 150 },
-    { id: 'TST00002', name: 'Lipid Profile', category: 'Biochemistry', turnaround: '48 hrs', cost: 200 },
-    { id: 'TST00003', name: 'Liver Function Test', category: 'Biochemistry', turnaround: '24 hrs', cost: 180 },
-    { id: 'TST00004', name: 'Kidney Function Test', category: 'Biochemistry', turnaround: '24 hrs', cost: 160 },
-    { id: 'TST00005', name: 'Thyroid Function Test', category: 'Endocrinology', turnaround: '72 hrs', cost: 250 },
-    { id: 'TST00006', name: 'Blood Glucose', category: 'Biochemistry', turnaround: '6 hrs', cost: 80 },
-    { id: 'TST00007', name: 'HbA1c', category: 'Diabetes', turnaround: '24 hrs', cost: 120 },
-    { id: 'TST00008', name: 'Vitamin D', category: 'Nutrition', turnaround: '72 hrs', cost: 300 }
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [samplesRes, testsRes] = await Promise.all([
+          api.get('/samples'),
+          api.get('/tests')
+        ]);
+        
+        // Filter for collected samples
+        const collectedSamples = samplesRes.data.filter(s => s.status === 'Collected');
+        setSamples(collectedSamples);
+        setAvailableTests(testsRes.data);
+      } catch (err) {
+        toast.error('Failed to load samples or tests.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const technicians = [
     { id: 'TECH001', name: 'Dr. Alice Johnson', department: 'Hematology' },
@@ -51,7 +41,26 @@ const TestAssignment = () => {
     { id: 'TECH003', name: 'Dr. Carol Williams', department: 'Endocrinology' }
   ];
 
-  const filteredSamples = mockSamples.filter(sample =>
+  // Map to local UI structure
+  const mappedSamples = samples.map(s => ({
+    _id: s._id,
+    id: s.sampleId,
+    patient: s.patient ? `${s.patient.firstName} ${s.patient.lastName}` : 'Unknown',
+    status: s.status,
+    collectionDate: new Date(s.collectionDate).toLocaleDateString(),
+    sampleType: s.sampleType
+  }));
+
+  const mappedTests = availableTests.map(t => ({
+    id: t._id,
+    testCode: t.testCode,
+    name: t.testName,
+    category: t.category,
+    turnaround: `${t.turnaroundTime} hrs`,
+    cost: t.cost
+  }));
+
+  const filteredSamples = mappedSamples.filter(sample =>
     sample.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
     sample.patient.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -70,38 +79,47 @@ const TestAssignment = () => {
     }
   };
 
-  const handleAssignTests = (e) => {
+  const handleAssignTests = async (e) => {
     e.preventDefault();
     
     if (!selectedSample) {
-      alert('Please select a sample first');
+      toast.error('Please select a sample first');
       return;
     }
     
     if (selectedTests.length === 0) {
-      alert('Please select at least one test');
+      toast.error('Please select at least one test');
       return;
     }
     
     if (!assignedTechnician) {
-      alert('Please assign a technician');
+      toast.error('Please assign a technician');
       return;
     }
     
-    // In a real app, this would send data to the backend
-    console.log('Test Assignment:', {
-      sampleId: selectedSample.id,
-      tests: selectedTests,
-      technician: assignedTechnician
-    });
-    
-    alert(`Tests assigned to sample ${selectedSample.id} successfully!`);
-    
-    // Reset form
-    setSelectedSample(null);
-    setSelectedTests([]);
-    setAssignedTechnician('');
-    setSearchTerm('');
+    setIsSubmitting(true);
+
+    try {
+      await api.patch(`/samples/${selectedSample._id}/assign-tests`, {
+        tests: selectedTests
+      });
+      
+      toast.success(`Tests assigned to sample ${selectedSample.id} successfully!`);
+      
+      // Remove successfully assigned sample from list
+      setSamples(prev => prev.filter(s => s._id !== selectedSample._id));
+      
+      // Reset form
+      setSelectedSample(null);
+      setSelectedTests([]);
+      setAssignedTechnician('');
+      setSearchTerm('');
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to assign tests';
+      toast.error(errorMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -169,7 +187,7 @@ const TestAssignment = () => {
               </div>
               
               <div className="tests-grid">
-                {availableTests.map(test => (
+                {mappedTests.map(test => (
                   <div
                     key={test.id}
                     className={`test-card ${selectedTests.includes(test.id) ? 'selected' : ''}`}
@@ -207,6 +225,7 @@ const TestAssignment = () => {
                     id="technician"
                     value={assignedTechnician}
                     onChange={(e) => setAssignedTechnician(e.target.value)}
+                    disabled={isSubmitting}
                   >
                     <option value="">Select Technician</option>
                     {technicians.map(tech => (
@@ -220,7 +239,7 @@ const TestAssignment = () => {
                 <div className="selected-tests-summary">
                   <p>Selected Tests: {selectedTests.length}</p>
                   <p>Total Cost: ₹{selectedTests.reduce((total, testId) => {
-                    const test = availableTests.find(t => t.id === testId);
+                    const test = mappedTests.find(t => t.id === testId);
                     return total + (test ? test.cost : 0);
                   }, 0)}</p>
                 </div>
@@ -228,9 +247,9 @@ const TestAssignment = () => {
                 <button
                   onClick={handleAssignTests}
                   className="assign-btn"
-                  disabled={selectedTests.length === 0 || !assignedTechnician}
+                  disabled={selectedTests.length === 0 || !assignedTechnician || isSubmitting}
                 >
-                  Assign Tests
+                  {isSubmitting ? 'Assigning...' : 'Assign Tests'}
                 </button>
               </div>
             </>

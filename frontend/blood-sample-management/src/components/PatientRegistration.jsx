@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import api from '../services/apiService';
+import { toast } from 'react-hot-toast';
 import './PatientRegistration.css';
 
 const PatientRegistration = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [patientData, setPatientData] = useState({
     firstName: '',
     lastName: '',
@@ -28,7 +31,7 @@ const PatientRegistration = () => {
     currentMedications: ''
   });
 
-  const [medicalHistory, setMedicalHistory] = useState([{ condition: '', diagnosisDate: '', notes: '' }]);
+  const [medicalHistory, setMedicalHistory] = useState([]);
   const [currentCondition, setCurrentCondition] = useState({ condition: '', diagnosisDate: '', notes: '' });
 
   const handleChange = (e) => {
@@ -91,12 +94,46 @@ const PatientRegistration = () => {
     setMedicalHistory(updatedHistory);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // In a real app, this would send data to the backend
-    console.log('Patient Data:', { ...patientData, medicalHistory });
-    alert('Patient registered successfully!');
+    setIsSubmitting(true);
+    
+    // Prepare data matching backend schema
+    const formattedData = {
+      ...patientData,
+      allergies: patientData.allergies ? patientData.allergies.split(',').map(s => s.trim()).filter(Boolean) : [],
+      currentMedications: patientData.currentMedications ? patientData.currentMedications.split(',').map(s => s.trim()).filter(Boolean) : [],
+      medicalHistory: medicalHistory.filter(item => item.condition && item.diagnosisDate)
+    };
+
+    try {
+      const response = await api.post('/patients', formattedData);
+      toast.success(`Patient registered successfully! ID: ${response.data.patientId}`);
+      
+      // Reset form
+      setPatientData({
+        firstName: '',
+        lastName: '',
+        dateOfBirth: '',
+        gender: '',
+        bloodGroup: '',
+        phoneNumber: '',
+        email: '',
+        address: { street: '', city: '', state: '', zipCode: '', country: '' },
+        emergencyContact: { name: '', relationship: '', phone: '' },
+        medicalHistory: [],
+        allergies: '',
+        currentMedications: ''
+      });
+      setMedicalHistory([]);
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to register patient';
+      toast.error(errorMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
 
   return (
     <motion.div
@@ -406,8 +443,10 @@ const PatientRegistration = () => {
         </div>
         
         <div className="form-actions">
-          <button type="button" className="cancel-btn">Cancel</button>
-          <button type="submit" className="submit-btn">Register Patient</button>
+          <button type="button" className="cancel-btn" disabled={isSubmitting}>Cancel</button>
+          <button type="submit" className="submit-btn" disabled={isSubmitting}>
+            {isSubmitting ? 'Registering...' : 'Register Patient'}
+          </button>
         </div>
       </form>
     </motion.div>

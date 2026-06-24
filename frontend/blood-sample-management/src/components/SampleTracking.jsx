@@ -1,39 +1,13 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import api from '../services/apiService';
+import { toast } from 'react-hot-toast';
 import './SampleTracking.css';
 
 const SampleTracking = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [trackingData, setTrackingData] = useState(null);
   const [loading, setLoading] = useState(false);
-
-  // Mock sample data for demonstration
-  const mockSamples = [
-    {
-      id: 'SMP00000125',
-      patient: 'John Doe',
-      status: 'Processing',
-      collectionDate: '2023-09-15',
-      collector: 'Dr. Smith',
-      tests: ['Complete Blood Count', 'Lipid Profile']
-    },
-    {
-      id: 'SMP00000124',
-      patient: 'Jane Smith',
-      status: 'Collected',
-      collectionDate: '2023-09-15',
-      collector: 'Dr. Johnson',
-      tests: ['Glucose Level', 'Liver Function']
-    },
-    {
-      id: 'SMP00000123',
-      patient: 'Robert Johnson',
-      status: 'Processed',
-      collectionDate: '2023-09-14',
-      collector: 'Dr. Williams',
-      tests: ['Kidney Function', 'Thyroid Panel']
-    }
-  ];
 
   const statusSteps = [
     { id: 'collected', name: 'Collected', icon: 'science' },
@@ -44,22 +18,49 @@ const SampleTracking = () => {
     { id: 'stored', name: 'Stored', icon: 'inventory' }
   ];
 
-  const handleSearch = (e) => {
+  const handleSearch = async (e) => {
     e.preventDefault();
-    if (!searchTerm.trim()) return;
+    if (!searchTerm.trim()) {
+      toast.error('Please enter a search term');
+      return;
+    }
     
     setLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      const foundSample = mockSamples.find(sample => 
-        sample.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        sample.patient.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+    try {
+      const response = await api.get('/samples');
+      const samples = response.data;
       
-      setTrackingData(foundSample || null);
+      const foundSample = samples.find(sample => {
+        const sampleIdMatch = sample.sampleId?.toLowerCase().includes(searchTerm.toLowerCase());
+        const patientName = sample.patient
+          ? `${sample.patient.firstName} ${sample.patient.lastName}`.toLowerCase()
+          : '';
+        const patientNameMatch = patientName.includes(searchTerm.toLowerCase());
+        const patientIdMatch = sample.patient?.patientId?.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        return sampleIdMatch || patientNameMatch || patientIdMatch || sample._id === searchTerm.trim();
+      });
+      
+      if (foundSample) {
+        // Map the backend model to trackingData structure
+        setTrackingData({
+          id: foundSample.sampleId,
+          patient: foundSample.patient ? `${foundSample.patient.firstName} ${foundSample.patient.lastName}` : 'Unknown',
+          status: foundSample.status,
+          collectionDate: new Date(foundSample.collectionDate).toLocaleDateString(),
+          collector: foundSample.collector ? `${foundSample.collector.firstName} ${foundSample.collector.lastName}` : 'Unknown',
+          tests: foundSample.testsAssigned?.map(t => t.testName || t.testCode) || []
+        });
+      } else {
+        setTrackingData(null);
+        toast.error(`Sample with ID or Patient "${searchTerm}" not found`);
+      }
+    } catch (error) {
+      toast.error('Error searching sample status');
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   const getCurrentStatusIndex = (status) => {

@@ -1,92 +1,138 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import api from '../services/apiService';
+import { toast } from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 import './DoctorReview.css';
 
 const DoctorReview = () => {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedReport, setSelectedReport] = useState(null);
   const [approvalNotes, setApprovalNotes] = useState('');
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Mock data for reports awaiting review
-  const mockReports = [
-    {
-      id: 'RPT00000001',
-      patient: 'John Doe',
-      sampleId: 'SMP00000125',
-      collectionDate: '2023-09-15',
-      generatedDate: '2023-09-16',
-      status: 'Pending Review',
-      hasAbnormalities: true,
-      flaggedParameters: ['WBC Count', 'Platelet Count']
+  // Mock reference ranges for status determination
+  const referenceRanges = {
+    'TST00001': { // CBC
+      'Hemoglobin': { min: 12.0, max: 16.0, unit: 'g/dL' },
+      'RBC Count': { min: 4.0, max: 5.9, unit: 'million/μL' },
+      'WBC Count': { min: 4000, max: 11000, unit: '/μL' },
+      'Platelet Count': { min: 150000, max: 450000, unit: '/μL' }
     },
-    {
-      id: 'RPT00000002',
-      patient: 'Jane Smith',
-      sampleId: 'SMP00000124',
-      collectionDate: '2023-09-15',
-      generatedDate: '2023-09-16',
-      status: 'Pending Review',
-      hasAbnormalities: false,
-      flaggedParameters: []
+    'TST00002': { // Lipid Profile
+      'Total Cholesterol': { min: 0, max: 200, unit: 'mg/dL' },
+      'LDL Cholesterol': { min: 0, max: 100, unit: 'mg/dL' },
+      'HDL Cholesterol': { min: 40, max: 100, unit: 'mg/dL' },
+      'Triglycerides': { min: 0, max: 150, unit: 'mg/dL' }
     },
-    {
-      id: 'RPT00000003',
-      patient: 'Robert Johnson',
-      sampleId: 'SMP00000123',
-      collectionDate: '2023-09-14',
-      generatedDate: '2023-09-15',
-      status: 'Approved',
-      hasAbnormalities: true,
-      flaggedParameters: ['ALT (SGPT)', 'AST (SGOT)']
+    'TST00003': { // Liver Function
+      'ALT (SGPT)': { min: 7, max: 55, unit: 'U/L' },
+      'AST (SGOT)': { min: 8, max: 48, unit: 'U/L' },
+      'Alkaline Phosphatase': { min: 44, max: 147, unit: 'U/L' },
+      'Total Bilirubin': { min: 0.1, max: 1.2, unit: 'mg/dL' }
+    },
+    'TST00006': { // Blood Glucose
+      'Fasting Glucose': { min: 70, max: 100, unit: 'mg/dL' },
+      'Random Glucose': { min: 70, max: 140, unit: 'mg/dL' }
     }
-  ];
-
-  // Mock test results data
-  const mockTestResults = {
-    'RPT00000001': [
-      {
-        testName: 'Complete Blood Count (CBC)',
-        parameters: [
-          { name: 'Hemoglobin', value: 14.2, unit: 'g/dL', min: 12.0, max: 16.0, status: 'Normal' },
-          { name: 'RBC Count', value: 4.8, unit: 'million/μL', min: 4.0, max: 5.9, status: 'Normal' },
-          { name: 'WBC Count', value: 15000, unit: '/μL', min: 4000, max: 11000, status: 'High' },
-          { name: 'Platelet Count', value: 80000, unit: '/μL', min: 150000, max: 450000, status: 'Low' }
-        ],
-        remarks: 'Elevated WBC count suggests infection. Low platelet count requires monitoring.'
-      },
-      {
-        testName: 'Lipid Profile',
-        parameters: [
-          { name: 'Total Cholesterol', value: 180, unit: 'mg/dL', min: 0, max: 200, status: 'Normal' },
-          { name: 'LDL Cholesterol', value: 100, unit: 'mg/dL', min: 0, max: 100, status: 'Normal' },
-          { name: 'HDL Cholesterol', value: 45, unit: 'mg/dL', min: 40, max: 100, status: 'Normal' },
-          { name: 'Triglycerides', value: 120, unit: 'mg/dL', min: 0, max: 150, status: 'Normal' }
-        ],
-        remarks: 'Lipid profile within normal limits.'
-      }
-    ],
-    'RPT00000002': [
-      {
-        testName: 'Liver Function Test',
-        parameters: [
-          { name: 'ALT (SGPT)', value: 35, unit: 'U/L', min: 7, max: 55, status: 'Normal' },
-          { name: 'AST (SGOT)', value: 30, unit: 'U/L', min: 8, max: 48, status: 'Normal' },
-          { name: 'Alkaline Phosphatase', value: 80, unit: 'U/L', min: 44, max: 147, status: 'Normal' },
-          { name: 'Total Bilirubin', value: 0.8, unit: 'mg/dL', min: 0.1, max: 1.2, status: 'Normal' }
-        ],
-        remarks: 'All liver function parameters are within normal range.'
-      },
-      {
-        testName: 'Blood Glucose',
-        parameters: [
-          { name: 'Fasting Glucose', value: 95, unit: 'mg/dL', min: 70, max: 100, status: 'Normal' }
-        ],
-        remarks: 'Normal fasting glucose level.'
-      }
-    ]
   };
 
-  const filteredReports = mockReports.filter(report =>
+  useEffect(() => {
+    const fetchReports = async () => {
+      try {
+        let response;
+        if (user?.role === 'Doctor') {
+          response = await api.get(`/doctors/reports/${user.id}`);
+        } else {
+          response = await api.get('/reports');
+        }
+        
+        // Only show reports that are not approved yet
+        const pendingReports = response.data.filter(r => !r.isApproved);
+        setReports(pendingReports);
+      } catch (err) {
+        toast.error('Failed to load reports.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (user?.id) {
+      fetchReports();
+    }
+  }, [user]);
+
+  // Map backend reports to local structure
+  const mappedReports = reports.map(r => {
+    const flagged = [];
+    const results = (r.testResults || []).map(tr => {
+      const testName = tr.test?.testName || 'Test';
+      const testCode = tr.test?.testCode || '';
+      
+      let params = [];
+      if (typeof tr.resultValue === 'object' && tr.resultValue !== null) {
+        params = Object.entries(tr.resultValue).map(([name, val]) => {
+          const ref = referenceRanges[testCode]?.[name] || { min: 0, max: 100, unit: tr.unit || '' };
+          
+          let status = 'Normal';
+          const numVal = parseFloat(val);
+          if (!isNaN(numVal)) {
+            if (numVal < ref.min) status = 'Low';
+            else if (numVal > ref.max) status = 'High';
+          }
+          if (status !== 'Normal') {
+            flagged.push(name);
+          }
+          
+          return {
+            name,
+            value: val,
+            unit: ref.unit,
+            min: ref.min,
+            max: ref.max,
+            status
+          };
+        });
+      } else {
+        let status = tr.status || 'Normal';
+        if (status === 'Abnormal' || status === 'Critical') {
+          flagged.push(testName);
+        }
+        params = [{
+          name: testName,
+          value: tr.resultValue,
+          unit: tr.unit || '',
+          min: tr.test?.normalRange?.min || 0,
+          max: tr.test?.normalRange?.max || 100,
+          status
+        }];
+      }
+
+      return {
+        testName,
+        parameters: params,
+        remarks: tr.remarks || ''
+      };
+    });
+
+    return {
+      _id: r._id,
+      id: r.reportId,
+      patient: r.patient ? `${r.patient.firstName} ${r.patient.lastName}` : 'Unknown',
+      sampleId: r.sample?.sampleId || 'Unknown',
+      sampleObjId: r.sample?._id || r.sample,
+      collectionDate: r.sample?.collectionDate ? new Date(r.sample.collectionDate).toLocaleDateString() : 'TBD',
+      generatedDate: new Date(r.generatedAt || r.createdAt).toLocaleDateString(),
+      status: r.isApproved ? 'Approved' : 'Pending Review',
+      hasAbnormalities: flagged.length > 0,
+      flaggedParameters: flagged,
+      testResultsList: results
+    };
+  });
+
+  const filteredReports = mappedReports.filter(report =>
     report.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
     report.patient.toLowerCase().includes(searchTerm.toLowerCase()) ||
     report.sampleId.toLowerCase().includes(searchTerm.toLowerCase())
@@ -94,52 +140,78 @@ const DoctorReview = () => {
 
   const handleReportSelect = (report) => {
     if (report.status === 'Approved') {
-      alert('This report has already been approved.');
+      toast.error('This report has already been approved.');
       return;
     }
-    
     setSelectedReport(report);
     setApprovalNotes('');
   };
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     if (!selectedReport) {
-      alert('Please select a report first');
+      toast.error('Please select a report first');
       return;
     }
     
-    // In a real app, this would send data to the backend
-    console.log('Report Approved:', {
-      reportId: selectedReport.id,
-      notes: approvalNotes
-    });
-    
-    alert(`Report ${selectedReport.id} approved successfully!`);
-    
-    // Reset form
-    setSelectedReport(null);
-    setApprovalNotes('');
-    setSearchTerm('');
+    setIsSubmitting(true);
+
+    try {
+      await api.patch(`/doctors/reports/${selectedReport._id}/approve`, {
+        doctorId: user?.id || null,
+        notes: approvalNotes
+      });
+      
+      toast.success(`Report ${selectedReport.id} approved successfully!`);
+      
+      // Update samples/reports local list
+      setReports(prev => prev.filter(r => r._id !== selectedReport._id));
+      
+      // Reset form
+      setSelectedReport(null);
+      setApprovalNotes('');
+      setSearchTerm('');
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Error approving report';
+      toast.error(errorMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleReject = () => {
+  const handleReject = async () => {
     if (!selectedReport) {
-      alert('Please select a report first');
+      toast.error('Please select a report first');
       return;
     }
     
-    // In a real app, this would send data to the backend
-    console.log('Report Rejected:', {
-      reportId: selectedReport.id,
-      notes: approvalNotes
-    });
-    
-    alert(`Report ${selectedReport.id} rejected and sent back for review.`);
-    
-    // Reset form
-    setSelectedReport(null);
-    setApprovalNotes('');
-    setSearchTerm('');
+    setIsSubmitting(true);
+
+    try {
+      // Set the sample status back to 'Processing' so the technician can edit it
+      if (selectedReport.sampleObjId) {
+        await api.patch(`/samples/${selectedReport.sampleObjId}/status`, {
+          status: 'Processing'
+        });
+      }
+      
+      // Delete the report so a new one can be generated
+      await api.delete(`/reports/${selectedReport._id}`);
+      
+      toast.success(`Report ${selectedReport.id} rejected and sent back to Lab.`);
+      
+      // Update reports list
+      setReports(prev => prev.filter(r => r._id !== selectedReport._id));
+      
+      // Reset form
+      setSelectedReport(null);
+      setApprovalNotes('');
+      setSearchTerm('');
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Error rejecting report';
+      toast.error(errorMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -241,7 +313,7 @@ const DoctorReview = () => {
               <div className="test-results-section">
                 <h4>Test Results</h4>
                 
-                {mockTestResults[selectedReport.id]?.map((test, index) => (
+                {selectedReport.testResultsList?.map((test, index) => (
                   <div key={index} className="test-section">
                     <h5>{test.testName}</h5>
                     
@@ -292,11 +364,11 @@ const DoctorReview = () => {
                 </div>
                 
                 <div className="action-buttons">
-                  <button onClick={handleReject} className="reject-btn">
-                    Request Changes
+                  <button onClick={handleReject} className="reject-btn" disabled={isSubmitting}>
+                    {isSubmitting ? 'Rejecting...' : 'Request Changes'}
                   </button>
-                  <button onClick={handleApprove} className="approve-btn">
-                    Approve Report
+                  <button onClick={handleApprove} className="approve-btn" disabled={isSubmitting}>
+                    {isSubmitting ? 'Approving...' : 'Approve Report'}
                   </button>
                 </div>
               </div>
