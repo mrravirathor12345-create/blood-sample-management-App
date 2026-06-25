@@ -1,50 +1,79 @@
 // Groq AI Service - Blood Sample Management System
 // Uses Groq's ultra-fast LLaMA models for medical analysis
 
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || localStorage.getItem('VITE_GROQ_API_KEY') || '';
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const MODEL = 'llama3-70b-8192'; // Groq's fastest model
+
+/**
+ * Validate an API key format
+ */
+function validateGroqApiKey(key) {
+  if (!key || typeof key !== 'string') return false;
+  const trimmedKey = key.trim();
+  // Groq keys typically start with "gsk_" followed by alphanumeric characters
+  return trimmedKey.startsWith('gsk_') && trimmedKey.length > 20;
+}
 
 /**
  * Send a request to Groq API
  */
 async function groqRequest(messages, systemPrompt = '', options = {}) {
   const activeKey = import.meta.env.VITE_GROQ_API_KEY || localStorage.getItem('VITE_GROQ_API_KEY') || '';
+  
   if (!activeKey) {
     throw new Error('GROQ_API_KEY not configured. Please add VITE_GROQ_API_KEY to your .env file or configure it in the AI Settings.');
   }
-
-  const response = await fetch(GROQ_API_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${activeKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: options.model || MODEL,
-      messages: [
-        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-        ...messages,
-      ],
-      max_tokens: options.maxTokens || 1024,
-      temperature: options.temperature || 0.3,
-      stream: false,
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error?.message || `Groq API error: ${response.status}`);
+  
+  if (!validateGroqApiKey(activeKey)) {
+    throw new Error('Invalid Groq API key format. Please check your API key in Settings.');
   }
 
-  const data = await response.json();
-  return data.choices[0]?.message?.content || '';
+  try {
+    const response = await fetch(GROQ_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${activeKey.trim()}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: options.model || MODEL,
+        messages: [
+          ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+          ...messages,
+        ],
+        max_tokens: options.maxTokens || 1024,
+        temperature: options.temperature || 0.3,
+        stream: false,
+      }),
+    });
+
+    if (response.status === 401) {
+      throw new Error('Invalid or revoked Groq API key. Please update your API key in Settings.');
+    }
+
+    if (response.status === 429) {
+      throw new Error('Groq API rate limit exceeded. Please try again later.');
+    }
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error?.message || `Groq API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0]?.message?.content || '';
+  } catch (error) {
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('Network error. Please check your internet connection and try again.');
+    }
+    throw error;
+  }
 }
 
 /**
  * Analyze blood test results and provide medical insights
  */
-export async function analyzeBloodTestResults(testData) {
+async function analyzeBloodTestResults(testData) {
   const systemPrompt = `You are an expert medical laboratory AI assistant specializing in blood test analysis. 
 Provide concise, clinically relevant insights based on blood test data. 
 Always recommend consulting a doctor for medical decisions.
@@ -82,7 +111,7 @@ ${JSON.stringify(testData, null, 2)}`;
 /**
  * Generate patient risk assessment based on history
  */
-export async function generatePatientRiskAssessment(patientData) {
+async function generatePatientRiskAssessment(patientData) {
   const systemPrompt = `You are a medical AI specializing in patient risk stratification for laboratory services.
 Analyze patient data and provide a comprehensive risk assessment.
 Format response as JSON:
@@ -115,7 +144,7 @@ ${JSON.stringify(patientData, null, 2)}`;
 /**
  * Analyze population-level trends from lab data
  */
-export async function analyzePopulationTrends(analyticsData) {
+async function analyzePopulationTrends(analyticsData) {
   const systemPrompt = `You are a public health and laboratory medicine AI analyst.
 Analyze population-level blood test data and identify trends, anomalies, and actionable insights.
 Format response as JSON:
@@ -148,7 +177,7 @@ ${JSON.stringify(analyticsData, null, 2)}`;
 /**
  * Medical Q&A chatbot for lab-related questions
  */
-export async function askMedicalQuestion(question, conversationHistory = []) {
+async function askMedicalQuestion(question, conversationHistory = []) {
   const systemPrompt = `You are BloodAI, an expert medical laboratory assistant integrated into a Blood Sample Management System.
 You help laboratory staff, doctors, and administrators understand:
 - Blood test interpretations and reference ranges
@@ -170,7 +199,7 @@ Do NOT provide direct diagnoses. Always note uncertainty where appropriate.`;
 /**
  * Generate smart report summary from test results
  */
-export async function generateReportSummary(reportData) {
+async function generateReportSummary(reportData) {
   const systemPrompt = `You are a medical report writing AI for laboratory reports.
 Generate a clear, professional clinical summary for patient reports.
 Format as JSON:
@@ -203,7 +232,7 @@ ${JSON.stringify(reportData, null, 2)}`;
 /**
  * Detect anomalies in sample data
  */
-export async function detectSampleAnomalies(samples) {
+async function detectSampleAnomalies(samples) {
   const systemPrompt = `You are a laboratory quality control AI.
 Analyze blood sample data for anomalies, quality issues, and processing irregularities.
 Format as JSON:
@@ -231,7 +260,7 @@ ${JSON.stringify(samples, null, 2)}`;
   return { anomalyScore: 0, anomalies: [], qualityMetrics: {}, systemAlerts: [], recommendations: [] };
 }
 
-export async function dictateClinicalNotes(rawNotes) {
+async function dictateClinicalNotes(rawNotes) {
   const systemPrompt = `You are a clinical transcription and medical record formatting assistant.
 Take unstructured, messy medical dictations or draft notes and structure them into a highly professional, clinical summary.
 Include sections like: Key Symptoms, Preliminary Indications, Recommended Actions, and Note Summary.
@@ -247,7 +276,7 @@ Use professional medical terminology.`;
   );
 }
 
-export default {
+export {
   analyzeBloodTestResults,
   generatePatientRiskAssessment,
   analyzePopulationTrends,
@@ -255,6 +284,5 @@ export default {
   generateReportSummary,
   dictateClinicalNotes,
   detectSampleAnomalies,
+  validateGroqApiKey
 };
-
-

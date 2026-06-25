@@ -4,7 +4,8 @@ import { toast } from 'react-hot-toast';
 import { 
   analyzeBloodTestResults as analyzeGroq, 
   askMedicalQuestion as askGroq,
-  dictateClinicalNotes as dictateGroq
+  dictateClinicalNotes as dictateGroq,
+  validateGroqApiKey
 } from '../services/groqService';
 import { 
   analyzeBloodTestResults as analyzeGemini, 
@@ -13,7 +14,7 @@ import {
 } from '../services/geminiService';
 import './AIAnalysisDashboard.css';
 
-// SVG Dashboard Circular Ring component - MOVED OUTSIDE for performance
+// SVG Dashboard Circular Ring component (MOVED OUTSIDE)
 const HealthRing = ({ color, percentage, label, icon }) => {
   const radius = 36;
   const strokeWidth = 5.5;
@@ -64,7 +65,7 @@ const HealthRing = ({ color, percentage, label, icon }) => {
 
 const AIAnalysisDashboard = () => {
   // AI Engine State ('gemini' or 'groq')
-  const [aiEngine, setAiEngine] = useState(localStorage.getItem('VITE_AI_ENGINE') || import.meta.env.VITE_AI_ENGINE || 'groq');
+  const [aiEngine, setAiEngine] = useState(localStorage.getItem('VITE_AI_ENGINE') || import.meta.env.VITE_AI_ENGINE || 'gemini');
   
   // API Keys State
   const [geminiKey, setGeminiKey] = useState(localStorage.getItem('VITE_GEMINI_API_KEY') || import.meta.env.VITE_GEMINI_API_KEY || '');
@@ -107,7 +108,7 @@ const AIAnalysisDashboard = () => {
   // Chat Console States
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState([
-    { role: 'assistant', content: "Hello! I'm your clinical AI assistant. I can help analyze blood metrics or answer lab questions." }
+    { role: 'assistant', content: "Hello! I am your Apple Health-style Clinical Assistant. I can help analyze your simulated blood metrics or answer laboratory reference questions. Toggle settings to insert your Gemini or Groq API keys." }
   ]);
   const [isChatTyping, setIsChatTyping] = useState(false);
   
@@ -123,9 +124,16 @@ const AIAnalysisDashboard = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages, isChatTyping]);
 
-  // Persist engine changes
+  // Persist engine changes and validate keys on mount
   useEffect(() => {
     localStorage.setItem('VITE_AI_ENGINE', aiEngine);
+    
+    // Validate stored keys on mount
+    const storedGroqKey = localStorage.getItem('VITE_GROQ_API_KEY');
+    if (storedGroqKey && !validateGroqApiKey(storedGroqKey)) {
+      localStorage.removeItem('VITE_GROQ_API_KEY');
+      setGroqKey('');
+    }
   }, [aiEngine]);
 
   // Save Settings Form
@@ -136,6 +144,29 @@ const AIAnalysisDashboard = () => {
     toast.success('API Configurations saved successfully!');
     setShowSettings(false);
     triggerAIDiagnosis();
+  };
+
+  // Test API Key
+  const handleTestApiKey = async () => {
+    const activeKey = aiEngine === 'gemini' ? geminiKey.trim() : groqKey.trim();
+    if (!activeKey) {
+      toast.error(`Please enter your ${aiEngine === 'gemini' ? 'Google Gemini' : 'Groq'} API key first.`);
+      return;
+    }
+
+    toast.loading(`Testing ${aiEngine === 'gemini' ? 'Google Gemini' : 'Groq'} API key...`);
+    try {
+      if (aiEngine === 'groq') {
+        await askGroq('Hello');
+      } else {
+        await askGemini('Hello');
+      }
+      toast.dismiss();
+      toast.success(`${aiEngine === 'gemini' ? 'Google Gemini' : 'Groq'} API key is valid!`);
+    } catch (error) {
+      toast.dismiss();
+      toast.error(error.message || `${aiEngine === 'gemini' ? 'Google Gemini' : 'Groq'} API key test failed.`);
+    }
   };
 
   // Check if API key for current engine is active
@@ -152,16 +183,16 @@ const AIAnalysisDashboard = () => {
     
     // Setup reasoning timeline steps
     const steps = [
-      { id: 1, text: 'Scanning cellular metrics...', status: 'pending' },
-      { id: 2, text: 'Mapping multi-system risk...', status: 'pending' },
-      { id: 3, text: 'Calculating trends...', status: 'pending' },
-      { id: 4, text: 'Generating insights...', status: 'pending' }
+      { id: 1, text: 'Scanning cellular metrics and reference bounds...', status: 'pending' },
+      { id: 2, text: 'Mapping multi-system risk coordinates...', status: 'pending' },
+      { id: 3, text: 'Calculating hepatic, renal, and diabetic trends...', status: 'pending' },
+      { id: 4, text: 'Structuring clinical diagnostics and recommendations...', status: 'pending' }
     ];
     setThinkingSteps(steps);
 
     // Simulate Agent Thinking Steps sequentially
     for (let i = 0; i < steps.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 350));
+      await new Promise(resolve => setTimeout(resolve, 400));
       setThinkingSteps(prev => prev.map((step, idx) => {
         if (idx === i) return { ...step, status: 'active' };
         if (idx < i) return { ...step, status: 'completed' };
@@ -194,7 +225,7 @@ const AIAnalysisDashboard = () => {
 
         setDiagnosis(result);
       } catch (error) {
-        toast.error(`${aiEngine === 'gemini' ? 'Gemini' : 'Groq'} API error. Using local fallback.`);
+        toast.error(error.message || `${aiEngine === 'gemini' ? 'Google Gemini' : 'Groq'} API error. Using local fallback.`);
         runLocalDiagnosis();
       }
     } else {
@@ -359,7 +390,7 @@ const AIAnalysisDashboard = () => {
           speakText(response);
         }
       } catch (error) {
-        toast.error('AI chat failed. Using offline medical responder.');
+        toast.error(error.message || 'AI chat failed. Using offline medical responder.');
         runLocalChatResponder(userMsg);
       }
     } else {
@@ -372,24 +403,26 @@ const AIAnalysisDashboard = () => {
   // Local simulated chatbot logic (offline fallback)
   const runLocalChatResponder = (question) => {
     const q = question.toLowerCase();
-    let response = `I'm running in local mode. Clinical guidance:\n\n`;
+    let response = `I'm running in local mode since no active API Key for ${aiEngine.toUpperCase()} was detected. Clinical guidance:
+
+`;
 
     if (q.includes('hemoglobin') || q.includes('anemia') || q.includes('oxygen')) {
-      response += "Hemoglobin carries oxygen in red blood cells. Normal range is 12-16 g/dL. Low values point to anemia.";
+      response += "Hemoglobin carries oxygen in red blood cells. Normal range is 12-16 g/dL. Low values point to anemia. Ensure optimal iron, folate, and B12 intake.";
     } else if (q.includes('wbc') || q.includes('white blood cell') || q.includes('infection')) {
-      response += "White blood cells defend against pathogens. Normal range is 4,000-11,000 /μL.";
+      response += "White blood cells defend against pathogens. Normal range is 4,000-11,000 /μL. Elevates in infections or acute tissue damage. Drops in bone marrow depression.";
     } else if (q.includes('platelet') || q.includes('bleeding') || q.includes('clot')) {
-      response += "Platelets coagulate blood. Normal range is 150k-450k /μL.";
+      response += "Platelets coagulate blood. Normal range is 150k-450k /μL. Crucial drops (<80k) carry hemorrhage risk. Excessive levels carry thrombosis risk.";
     } else if (q.includes('glucose') || q.includes('sugar') || q.includes('diabetes')) {
-      response += "Fasting blood glucose normal range is 70-100 mg/dL. Elevated levels indicate prediabetes/diabetes.";
+      response += "Fasting blood glucose measures metabolic sugar levels. Normal range is 70-100 mg/dL. Elevated fasting glucose indicates prediabetes or diabetes.";
     } else if (q.includes('creatinine') || q.includes('kidney')) {
-      response += "Creatinine normal range is 0.6-1.2 mg/dL. Elevations signal decreased kidney function.";
+      response += "Creatinine is a waste product of muscle wear filtered by kidneys. Normal range is 0.6-1.2 mg/dL. Elevations signal decreased kidney function or dehydration.";
     } else if (q.includes('bilirubin') || q.includes('liver')) {
-      response += "Bilirubin normal range is 0.2-1.2 mg/dL. High levels point to liver stress.";
+      response += "Bilirubin results from breakdown of red blood cells. Normal range is 0.2-1.2 mg/dL. High levels point to liver stress, bile duct blockage, or hemolysis.";
     } else if (q.includes('tsh') || q.includes('thyroid')) {
-      response += "TSH normal range is 0.4-4.0 uIU/mL. High = hypothyroidism; low = hyperthyroidism.";
+      response += "TSH is released by the pituitary gland to control thyroid activity. Normal range is 0.4-4.0 uIU/mL. High levels indicate hypothyroidism; low levels indicate hyperthyroidism.";
     } else {
-      response += "Please configure your API keys in Settings to unlock full clinical dialogue.";
+      response += "Please configure your Gemini or Groq API Keys in the top-right Settings menu to unlock clinical dialogue.";
     }
 
     setChatMessages(prev => [...prev, { role: 'assistant', content: response }]);
@@ -400,6 +433,7 @@ const AIAnalysisDashboard = () => {
   const speakText = (text) => {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
+      // Remove JSON or complex markdown characters from voice speech
       const cleanText = text.replace(/[*#`_\-]/g, '').replace(/\{[\s\S]*\}/g, '');
       const utterance = new SpeechSynthesisUtterance(cleanText);
       utterance.rate = 1.05;
@@ -420,7 +454,7 @@ const AIAnalysisDashboard = () => {
           : await dictateGroq(rawNotes);
         setFormattedNotes(formatted);
       } catch (error) {
-        toast.error('Formatting notes failed. Using local template.');
+        toast.error(error.message || 'Formatting notes failed. Using local template.');
         runLocalNotesFormatter();
       }
     } else {
@@ -432,18 +466,29 @@ const AIAnalysisDashboard = () => {
 
   // Local Notes Formatter fallback
   const runLocalNotesFormatter = () => {
-    const formatted = `[CLINICAL RECORD FORMATTING - LOCAL ENGINE]\n\n1. KEY SYMPTOMS & OBSERVATIONS\n- Patient records: "${rawNotes}"\n\n2. INITIAL FINDINGS\n- Evaluated against standard clinical lab limits\n\n3. SUGGESTED FOLLOW-UP ACTION PROTOCOLS\n- Re-run parameters check`;
+    const formatted = `[CLINICAL RECORD FORMATTING - LOCAL ENGINE]
+
+1. KEY SYMPTOMS & OBSERVATIONS
+- Patient records: "${rawNotes}"
+
+2. INITIAL FINDINGS
+- Evaluated against standard clinical lab limits
+- Requires verification with active API key
+
+3. SUGGESTED FOLLOW-UP ACTION PROTOCOLS
+- Re-run parameters check
+- Cross-examine with patient records`;
     setFormattedNotes(formatted);
   };
 
   // Helper to color risk levels
   const getRiskColor = (level) => {
     switch (level) {
-      case 'Low': return '#34c759';
-      case 'Medium': return '#ff9500';
-      case 'High': return '#ff3b30';
-      case 'Critical': return '#af52de';
-      default: return '#8e8e93';
+      case 'Low': return '#34c759'; // Apple green
+      case 'Medium': return '#ff9500'; // Apple orange
+      case 'High': return '#ff3b30'; // Apple red
+      case 'Critical': return '#af52de'; // Apple purple
+      default: return '#8e8e93'; // Apple gray
     }
   };
 
@@ -492,44 +537,44 @@ const AIAnalysisDashboard = () => {
     if (parameters.glucose > 100) {
       recs.push({
         test: 'HbA1c & Fasting Insulin',
-        rationale: 'Elevated glucose detected. HbA1c measures 3-month glycemic trends.'
+        rationale: 'Elevated glucose detected. HbA1c measures 3-month glycemic trends to confirm prediabetic states.'
       });
     }
     if (parameters.cholesterol > 200) {
       recs.push({
         test: 'Lipid Subfraction Panel',
-        rationale: 'High cholesterol levels. Assess cardiovascular risk by LDL-C and ApoB.'
+        rationale: 'High cholesterol levels. Fractional evaluation assesses cardiovascular risk by dividing LDL-C and ApoB particles.'
       });
     }
     if (parameters.wbc > 11000 || parameters.wbc < 4000) {
       recs.push({
         test: 'CBC with Diff & CRP Test',
-        rationale: 'Immunological metrics deviate. High WBC signals inflammation; CRP confirms it.'
+        rationale: 'Immunological metrics deviate. High WBC signals acute inflammatory response; CRP confirms systemic swelling.'
       });
     }
     if (parameters.creatinine > 1.2) {
       recs.push({
         test: 'Renal Clearance & eGFR',
-        rationale: 'Kidney filtration compromised. eGFR verifies GFR levels for staging.'
+        rationale: 'Kidney filtration index is compromised. eGFR verifies GFR levels to identify kidney damage staging.'
       });
     }
     if (parameters.bilirubin > 1.2) {
       recs.push({
         test: 'Hepatic Enzyme LFT Panel',
-        rationale: 'Elevated bilirubin suggests liver strain. Check ALT/AST.'
+        rationale: 'Elevated bilirubin suggests liver stress. Transaminases (ALT/AST) confirm cell necrosis or biliary blocks.'
       });
     }
     if (parameters.tsh > 4.0 || parameters.tsh < 0.4) {
       recs.push({
         test: 'Free T3 & Free T4 Panel',
-        rationale: 'Thyroid signals fluctuate. Check active hormones.'
+        rationale: 'Pituitary thyroid signals fluctuate. Active hormones clarify hyper/hypothyroidism root causes.'
       });
     }
 
     if (recs.length === 0) {
       recs.push({
         test: 'Annual Health Panel Screen',
-        rationale: 'All metrics inside optimal ranges. Continue routine checks.'
+        rationale: 'All metrics reside inside optimal reference values. Continue routine annual screening checks.'
       });
     }
     return recs;
@@ -540,9 +585,9 @@ const AIAnalysisDashboard = () => {
 
   return (
     <div className="ai-co-pilot-container page-shell apple-theme">
-      {/* Animated Background */}
+      {/* Drifting Background DNA Particles */}
       <div className="dna-particle-bg">
-        {[...Array(18)].map((_, i) => (
+        {[...Array(15)].map((_, i) => (
           <div 
             key={i} 
             className="dna-node" 
@@ -556,46 +601,44 @@ const AIAnalysisDashboard = () => {
         ))}
       </div>
 
-      {/* Header Block */}
+      {/* Header Block with API configuration */}
       <header className="copilot-header">
         <div className="header-brand-container">
-          <div className="logo-badge">
-            <span className="material-icons logo-icon">medical_services</span>
-          </div>
-          <div className="header-text">
-            <span className="superscript">Clinical Intelligence Suite</span>
-            <h1>AI Diagnostic Co-Pilot</h1>
-          </div>
-          <span className="engine-badge pill-badge">
-            {aiEngine === 'gemini' ? 'Gemini AI' : 'Groq AI'}
-          </span>
-        </div>
-        
-        <div className="header-actions">
-          <div className="engine-segmented-control glass-card">
-            <button 
-              className={`segmented-btn ${aiEngine === 'gemini' ? 'active' : ''}`}
-              onClick={() => setAiEngine('gemini')}
-            >
-              Gemini
-            </button>
-            <button 
-              className={`segmented-btn ${aiEngine === 'groq' ? 'active' : ''}`}
-              onClick={() => setAiEngine('groq')}
-            >
-              Groq
-            </button>
-          </div>
+              <span className="superscript">Apple Health Clinical Suite</span>
+              <div className="header-title-wrap">
+                <h1>AI Diagnostic Laboratory Co-Pilot</h1>
+                <span className="engine-badge pill-badge">
+                  {aiEngine === 'gemini' ? 'Google Gemini' : 'Groq LLaMA'}
+                </span>
+              </div>
+            </div>
+            
+            <div className="header-actions">
+              {/* Engine segment control */}
+              <div className="engine-segmented-control glass-card">
+                <button 
+                  className={`segmented-btn ${aiEngine === 'gemini' ? 'active' : ''}`}
+                  onClick={() => setAiEngine('gemini')}
+                >
+                  Gemini
+                </button>
+                <button 
+                  className={`segmented-btn ${aiEngine === 'groq' ? 'active' : ''}`}
+                  onClick={() => setAiEngine('groq')}
+                >
+                  Groq
+                </button>
+              </div>
 
-          <button 
-            onClick={() => setShowSettings(true)} 
-            className="settings-toggle-btn glass-card pill-btn"
-            title="Configure API Keys"
-          >
-            <span className="material-icons">settings</span>
-            Settings
-          </button>
-        </div>
+              <button 
+                onClick={() => setShowSettings(true)} 
+                className="settings-toggle-btn glass-card pill-btn"
+                title="Configure API Keys"
+              >
+                <span className="material-icons">settings</span>
+                Settings
+              </button>
+            </div>
       </header>
 
       {/* Settings Modal */}
@@ -603,33 +646,29 @@ const AIAnalysisDashboard = () => {
         <div className="settings-backdrop">
           <motion.div 
             className="settings-modal-card glass-card apple-shadow"
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
           >
             <div className="modal-header">
-              <div className="modal-title-wrap">
-                <span className="material-icons modal-icon">vpn_key</span>
-                <h2>API Configuration</h2>
-              </div>
+              <h2>API Configurations</h2>
               <button className="close-modal-btn" onClick={() => setShowSettings(false)}>
                 <span className="material-icons">close</span>
               </button>
             </div>
-            <p className="modal-subtext">Connect your AI models for live clinical diagnostic reasoning</p>
+            <p className="modal-subtext">Configure clinical keys for live diagnostic reasoning.</p>
             
             <form onSubmit={handleSaveSettings} className="modal-form">
               <div className="form-group-field">
-                <div className="field-label-wrap">
-                  <span className="material-icons field-icon">smart_toy</span>
-                  <label>Google Gemini API Key</label>
+                <label>Google Gemini API Key</label>
+                <div style={{ fontSize: '0.8rem', color: 'rgba(235,235,245,0.6)', marginBottom: '8px' }}>
+                  Get your key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style={{ color: '#007aff' }}>Google AI Studio</a>
                 </div>
                 <div className="input-with-icon">
                   <span className="material-icons">key</span>
                   <input 
                     type="password" 
-                    placeholder="Enter Gemini API key..."
+                    placeholder="AIZAsy..."
                     value={geminiKey}
                     onChange={(e) => setGeminiKey(e.target.value)}
                   />
@@ -637,15 +676,15 @@ const AIAnalysisDashboard = () => {
               </div>
 
               <div className="form-group-field">
-                <div className="field-label-wrap">
-                  <span className="material-icons field-icon">psychology</span>
-                  <label>Groq LLaMA API Key</label>
+                <label>Groq LLaMA API Key</label>
+                <div style={{ fontSize: '0.8rem', color: 'rgba(235,235,245,0.6)', marginBottom: '8px' }}>
+                  Get your key from <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" style={{ color: '#007aff' }}>Groq Console</a>
                 </div>
                 <div className="input-with-icon">
                   <span className="material-icons">vpn_key</span>
                   <input 
                     type="password" 
-                    placeholder="Enter Groq API key..."
+                    placeholder="gsk_..."
                     value={groqKey}
                     onChange={(e) => setGroqKey(e.target.value)}
                   />
@@ -654,35 +693,32 @@ const AIAnalysisDashboard = () => {
 
               <div className="modal-form-actions">
                 <button type="button" className="cancel-btn" onClick={() => setShowSettings(false)}>Cancel</button>
-                <button type="submit" className="save-btn pill-btn">Save & Apply</button>
+                <button type="button" className="save-btn pill-btn" onClick={handleTestApiKey} style={{ marginRight: '10px', background: 'linear-gradient(135deg, #8e8e93, #636366)' }}>
+                  Test {aiEngine === 'gemini' ? 'Gemini' : 'Groq'} Key
+                </button>
+                <button type="submit" className="save-btn pill-btn">Save Configurations</button>
               </div>
             </form>
           </motion.div>
         </div>
       )}
 
-      {/* Main Grid Layout */}
+      {/* Main Grid: Left Sandbox Controls, Middle Live SVG Stream, Right AI Console */}
       <main className="copilot-grid">
         
-        {/* PANEL 1: Clinical Sandbox (Sliders) */}
+        {/* PANEL 1: Diagnostic Sandbox Sliders */}
         <section className="copilot-card glass-card panel-sliders">
           <div className="card-header-bar">
-            <div className="header-bar-left">
-              <span className="material-icons header-icon">tune</span>
-              <h2>Clinical Sandbox</h2>
-            </div>
-            <span className="badge-count">8 Parameters</span>
+            <span className="material-icons header-icon">sliders</span>
+            <h2>Clinical Sandbox</h2>
           </div>
-          <p className="panel-desc">Adjust values to simulate patient blood panel metrics</p>
+          <p className="panel-desc">Slide values to simulate patient conditions and test AI reaction.</p>
 
           <div className="sliders-container">
             {/* Hemoglobin */}
             <div className="slider-group">
               <div className="slider-labels">
-                <div className="param-header">
-                  <span className="material-icons param-icon">bloodtype</span>
-                  <span className="param-label">Hemoglobin</span>
-                </div>
+                <span className="param-label">Hemoglobin (Red Cells)</span>
                 <span className="param-value">{parameters.hemoglobin.toFixed(1)} <span className="param-unit">g/dL</span></span>
               </div>
               <input 
@@ -695,19 +731,16 @@ const AIAnalysisDashboard = () => {
                 className="copilot-slider slider-red"
               />
               <div className="slider-bounds">
-                <span>5.0</span>
-                <span className="normal-range">12.0 - 16.0</span>
-                <span>20.0</span>
+                <span>5.0 (Anemia)</span>
+                <span>Normal: 12.0 - 16.0</span>
+                <span>20.0 (High)</span>
               </div>
             </div>
 
             {/* WBC */}
             <div className="slider-group">
               <div className="slider-labels">
-                <div className="param-header">
-                  <span className="material-icons param-icon">coronavirus</span>
-                  <span className="param-label">WBC Count</span>
-                </div>
+                <span className="param-label">White Blood Cells (WBC)</span>
                 <span className="param-value">{parameters.wbc.toLocaleString()} <span className="param-unit">/μL</span></span>
               </div>
               <input 
@@ -720,19 +753,16 @@ const AIAnalysisDashboard = () => {
                 className="copilot-slider slider-blue"
               />
               <div className="slider-bounds">
-                <span>1k</span>
-                <span className="normal-range">4k - 11k</span>
-                <span>30k</span>
+                <span>1k (Leukopenia)</span>
+                <span>Normal: 4k - 11k</span>
+                <span>30k (Infection)</span>
               </div>
             </div>
 
             {/* Platelets */}
             <div className="slider-group">
               <div className="slider-labels">
-                <div className="param-header">
-                  <span className="material-icons param-icon">healing</span>
-                  <span className="param-label">Platelet Count</span>
-                </div>
+                <span className="param-label">Platelet Count</span>
                 <span className="param-value">{parameters.platelets.toLocaleString()} <span className="param-unit">/μL</span></span>
               </div>
               <input 
@@ -745,19 +775,16 @@ const AIAnalysisDashboard = () => {
                 className="copilot-slider slider-purple"
               />
               <div className="slider-bounds">
-                <span>20k</span>
-                <span className="normal-range">150k - 450k</span>
-                <span>600k</span>
+                <span>20k (Bleeding)</span>
+                <span>Normal: 150k - 450k</span>
+                <span>600k (High)</span>
               </div>
             </div>
 
             {/* Glucose */}
             <div className="slider-group">
               <div className="slider-labels">
-                <div className="param-header">
-                  <span className="material-icons param-icon">water_drop</span>
-                  <span className="param-label">Glucose (Fasting)</span>
-                </div>
+                <span className="param-label">Glucose (Fasting)</span>
                 <span className="param-value">{parameters.glucose} <span className="param-unit">mg/dL</span></span>
               </div>
               <input 
@@ -770,19 +797,16 @@ const AIAnalysisDashboard = () => {
                 className="copilot-slider slider-cyan"
               />
               <div className="slider-bounds">
-                <span>30</span>
-                <span className="normal-range">70 - 100</span>
-                <span>300</span>
+                <span>30 (Shock)</span>
+                <span>Normal: 70 - 100</span>
+                <span>300 (Severe)</span>
               </div>
             </div>
 
             {/* Cholesterol */}
             <div className="slider-group">
               <div className="slider-labels">
-                <div className="param-header">
-                  <span className="material-icons param-icon">nutrition</span>
-                  <span className="param-label">Total Cholesterol</span>
-                </div>
+                <span className="param-label">Cholesterol (Total)</span>
                 <span className="param-value">{parameters.cholesterol} <span className="param-unit">mg/dL</span></span>
               </div>
               <input 
@@ -795,19 +819,16 @@ const AIAnalysisDashboard = () => {
                 className="copilot-slider slider-orange"
               />
               <div className="slider-bounds">
-                <span>80</span>
-                <span className="normal-range">120 - 200</span>
-                <span>400</span>
+                <span>80 (Low)</span>
+                <span>Normal: 120 - 200</span>
+                <span>400 (High Risk)</span>
               </div>
             </div>
 
             {/* Creatinine */}
             <div className="slider-group">
               <div className="slider-labels">
-                <div className="param-header">
-                  <span className="material-icons param-icon">kidney</span>
-                  <span className="param-label">Creatinine</span>
-                </div>
+                <span className="param-label">Creatinine (Renal Clearance)</span>
                 <span className="param-value">{parameters.creatinine.toFixed(1)} <span className="param-unit">mg/dL</span></span>
               </div>
               <input 
@@ -820,19 +841,16 @@ const AIAnalysisDashboard = () => {
                 className="copilot-slider slider-yellow"
               />
               <div className="slider-bounds">
-                <span>0.2</span>
-                <span className="normal-range">0.6 - 1.2</span>
-                <span>6.0</span>
+                <span>0.2 (Low)</span>
+                <span>Normal: 0.6 - 1.2</span>
+                <span>6.0 (Renal Stasis)</span>
               </div>
             </div>
 
             {/* Bilirubin */}
             <div className="slider-group">
               <div className="slider-labels">
-                <div className="param-header">
-                  <span className="material-icons param-icon">person</span>
-                  <span className="param-label">Bilirubin</span>
-                </div>
+                <span className="param-label">Bilirubin (Hepatic function)</span>
                 <span className="param-value">{parameters.bilirubin.toFixed(1)} <span className="param-unit">mg/dL</span></span>
               </div>
               <input 
@@ -845,19 +863,16 @@ const AIAnalysisDashboard = () => {
                 className="copilot-slider slider-green"
               />
               <div className="slider-bounds">
-                <span>0.1</span>
-                <span className="normal-range">0.2 - 1.2</span>
-                <span>10.0</span>
+                <span>0.1 (Low)</span>
+                <span>Normal: 0.2 - 1.2</span>
+                <span>10.0 (Jaundice)</span>
               </div>
             </div>
 
             {/* TSH */}
             <div className="slider-group">
               <div className="slider-labels">
-                <div className="param-header">
-                  <span className="material-icons param-icon">monitor_heart</span>
-                  <span className="param-label">TSH (Thyroid)</span>
-                </div>
+                <span className="param-label">TSH (Thyroid Signal)</span>
                 <span className="param-value">{parameters.tsh.toFixed(1)} <span className="param-unit">uIU/mL</span></span>
               </div>
               <input 
@@ -870,20 +885,20 @@ const AIAnalysisDashboard = () => {
                 className="copilot-slider slider-pink"
               />
               <div className="slider-bounds">
-                <span>0.05</span>
-                <span className="normal-range">0.4 - 4.0</span>
-                <span>15.0</span>
+                <span>0.05 (Hyper)</span>
+                <span>Normal: 0.4 - 4.0</span>
+                <span>15.0 (Hypo)</span>
               </div>
             </div>
 
           </div>
         </section>
 
-        {/* PANEL 2: Central Dashboard (Rings + Simulation) */}
-        <section className="copilot-card panel-center">
+        {/* PANEL 2: Live SVG Cellular Stream & Apple Health Rings */}
+        <section className="copilot-card panel-simulation-and-rings">
           
           {/* Apple watch health rings */}
-          <div className="apple-rings-section glass-card">
+          <div className="apple-rings-section">
             <div className="card-header-bar">
               <span className="material-icons header-icon">health_and_safety</span>
               <h2>Biometric Vectors</h2>
@@ -917,11 +932,11 @@ const AIAnalysisDashboard = () => {
             </div>
           </div>
           
-          {/* SVG Cellular stream simulation */}
+          {/* SVG Cellular stream */}
           <div className="simulation-frame-card glass-card">
             <div className="card-header-bar">
               <span className="material-icons header-icon">biotech</span>
-              <h2>Microscopic Simulation</h2>
+              <h2>Microscopic Fluidic Simulation</h2>
             </div>
             
             <div className="simulation-frame">
@@ -942,84 +957,16 @@ const AIAnalysisDashboard = () => {
                     <stop offset="70%" stopColor="#9b5de5" />
                     <stop offset="100%" stopColor="#560bad" />
                   </radialGradient>
-                  <linearGradient id="plasma-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#0e0e10" />
-                    <stop offset="100%" stopColor="#040404" />
-                  </linearGradient>
                 </defs>
 
-                {/* Plasma Background */}
-                <rect width="400" height="240" rx="14" fill="url(#plasma-grad)" />
-
-                {/* Red Blood Cells */}
-                {[...Array(12)].map((_, i) => (
-                  <motion.ellipse
-                    key={`rbc-${i}`}
-                    cx={-50}
-                    cy={60 + (i % 4) * 40}
-                    rx="16"
-                    ry="10"
-                    fill="url(#rbc-grad)"
-                    className="blood-cell rbc"
-                    initial={{ opacity: 0 }}
-                    animate={{ 
-                      cx: 450,
-                      opacity: [0, 1, 1, 0],
-                    }}
-                    transition={{ 
-                      duration: 6 + i * 0.5,
-                      repeat: Infinity,
-                      ease: "linear",
-                      delay: i * 0.6,
-                    }}
-                  />
-                ))}
-
-                {/* White Blood Cells */}
-                {[...Array(5)].map((_, i) => (
-                  <motion.circle
-                    key={`wbc-${i}`}
-                    cx={-30}
-                    cy={80 + (i % 3) * 50}
-                    r="10"
-                    fill="url(#wbc-grad)"
-                    className="blood-cell wbc"
-                    initial={{ opacity: 0 }}
-                    animate={{ 
-                      cx: 430,
-                      opacity: [0, 1, 1, 0],
-                    }}
-                    transition={{ 
-                      duration: 9 + i * 0.8,
-                      repeat: Infinity,
-                      ease: "linear",
-                      delay: i * 1.2,
-                    }}
-                  />
-                ))}
-
-                {/* Platelets */}
-                {[...Array(18)].map((_, i) => (
-                  <motion.circle
-                    key={`plt-${i}`}
-                    cx={-20}
-                    cy={50 + (i % 5) * 35}
-                    r="5"
-                    fill="url(#platelet-grad)"
-                    className="blood-cell platelet"
-                    initial={{ opacity: 0 }}
-                    animate={{ 
-                      cx: 420,
-                      opacity: [0, 1, 1, 0],
-                    }}
-                    transition={{ 
-                      duration: 5 + i * 0.4,
-                      repeat: Infinity,
-                      ease: "linear",
-                      delay: i * 0.3,
-                    }}
-                  />
-                ))}
+                {/* Fluid Background with dynamic shifts based on bilirubin/creatinine */}
+                <defs>
+                  <linearGradient id="plasma-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor={parameters.bilirubin > 2.0 ? '#261b02' : parameters.creatinine > 2.0 ? '#1b0922' : '#0e0e10'} />
+                    <stop offset="100%" stopColor={parameters.bilirubin > 2.0 ? '#100b00' : parameters.creatinine > 2.0 ? '#0b020e' : '#040404'} />
+                  </linearGradient>
+                </defs>
+                <rect width="400" height="240" rx="14" fill="url(#plasma-grad)" style={{ transition: 'fill 0.5s ease' }} />
 
                 {/* Sugar dots representing glucose */}
                 {[...Array(Math.min(40, Math.floor(parameters.glucose / 6)))].map((_, i) => (
@@ -1055,318 +1002,383 @@ const AIAnalysisDashboard = () => {
                   />
                 ))}
 
-                {/* Bilirubin particles */}
+                {/* Bilirubin bile particles (yellow-greenish) */}
                 {parameters.bilirubin > 1.2 && [...Array(Math.min(20, Math.floor(parameters.bilirubin * 3)))].map((_, i) => (
                   <circle
                     key={`bili-${i}`}
                     cx={((i * 73) % 340) + 30}
                     cy={((i * 29) % 180) + 30}
                     r="2.2"
-                    fill="#fbbf24"
+                    fill="#bfdbfe"
+                    stroke="#eab308"
+                    strokeWidth="0.5"
                     opacity="0.85"
                     className="plasma-particle"
                     style={{
-                      animationDuration: `${3 + (i % 2)}s`,
-                      animationDelay: `${i * 0.1}s`
+                      animationDuration: `${3 + (i % 3)}s`,
+                      animationDelay: `${i * 0.15}s`
+                    }}
+                  />
+                ))}
+
+                {/* Red Blood Cells */}
+                {[...Array(Math.max(4, Math.floor(parameters.hemoglobin * 1.5)))].map((_, i) => (
+                  <g key={`rbc-${i}`} className="blood-cell cell-rbc" style={{
+                    animationDuration: `${7 - (parameters.hemoglobin / 4.5)}s`,
+                    animationDelay: `${i * 0.45}s`
+                  }}>
+                    <circle
+                      cx="-20"
+                      cy={40 + (i * 27) % 160}
+                      r="10"
+                      fill="url(#rbc-grad)"
+                      filter="drop-shadow(0 2px 4px rgba(0,0,0,0.4))"
+                    />
+                    <circle
+                      cx="-20"
+                      cy={40 + (i * 27) % 160}
+                      r="4.5"
+                      fill="#300000"
+                      opacity="0.5"
+                    />
+                  </g>
+                ))}
+
+                {/* White Blood Cells */}
+                {[...Array(Math.max(1, Math.floor(parameters.wbc / 3200)))].map((_, i) => (
+                  <circle
+                    key={`wbc-${i}`}
+                    cx="-30"
+                    cy={30 + (i * 41) % 170}
+                    r="15"
+                    fill="url(#wbc-grad)"
+                    filter="drop-shadow(0 3px 5px rgba(0,0,0,0.3))"
+                    className="blood-cell cell-wbc"
+                    style={{
+                      animationDuration: `${9 - (parameters.wbc / 6500)}s`,
+                      animationDelay: `${i * 1.1}s`
+                    }}
+                  />
+                ))}
+
+                {/* Platelets */}
+                {[...Array(Math.max(1, Math.floor(parameters.platelets / 70000)))].map((_, i) => (
+                  <polygon
+                    key={`plt-${i}`}
+                    points="-10,4 0,0 -4,-8 -12,-4"
+                    transform={`translate(-10, ${50 + (i * 57) % 140})`}
+                    fill="url(#platelet-grad)"
+                    className="blood-cell cell-platelet"
+                    style={{
+                      animationDuration: `${5.5 - (parameters.platelets / 160000)}s`,
+                      animationDelay: `${i * 0.75}s`
                     }}
                   />
                 ))}
               </svg>
             </div>
-
-            {/* Simulation Stats */}
+            
             <div className="flow-specs">
               <div className="spec-pill">
-                <span className="spec-label">Hematocrit</span>
-                <span className="spec-value">{Math.round((parameters.hemoglobin / 3) * 10)}%</span>
+                <span>Blood Viscosity:</span>
+                <span className="spec-value">{(parameters.wbc / 20000 + parameters.hemoglobin * 0.3).toFixed(1)} cP</span>
               </div>
               <div className="spec-pill">
-                <span className="spec-label">O2 Sat</span>
-                <span className="spec-value">{Math.min(100, Math.max(80, Math.round(parameters.hemoglobin * 6.5)))}%</span>
-              </div>
-              <div className="spec-pill">
-                <span className="spec-label">Flow Rate</span>
-                <span className="spec-value">{Math.round(parameters.platelets / 50000)}.0x</span>
+                <span>Cell Density:</span>
+                <span className="spec-value">{((parameters.wbc + parameters.platelets) / 100000).toFixed(1)} M/ml</span>
               </div>
             </div>
           </div>
-
         </section>
 
-        {/* PANEL 3: AI Console */}
+        {/* PANEL 3: AI Co-Pilot Console & Chat */}
         <section className="copilot-card glass-card panel-ai-console">
-          <div className="card-header-bar">
-            <span className="material-icons header-icon">assistant</span>
-            <h2>AI Diagnostic Console</h2>
-          </div>
-
-          {/* Thinking Timeline */}
-          <div className="thinking-timeline">
-            {thinkingSteps.map((step) => (
-              <div key={step.id} className={`timeline-step ${step.status}`}>
-                <div className="step-marker">
-                  {step.status === 'completed' ? (
-                    <span className="material-icons done">check_circle</span>
-                  ) : step.status === 'active' ? (
-                    <div className="pulse-dot active-blue"></div>
-                  ) : (
-                    <div className="marker-dot"></div>
-                  )}
-                </div>
-                <span>{step.text}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Main Diagnosis Card */}
-          <div className="diagnosis-box glass-card">
-            <div className="diag-overall">
-              <div className="diag-kpi">
-                <span className="kpi-label">Overall Risk</span>
-                <span className="kpi-val" style={{ color: getRiskColor(diagnosis.riskLevel) }}>
-                  {diagnosis.riskLevel}
-                </span>
-              </div>
-              <div className="diag-kpi">
-                <span className="kpi-label">Urgency</span>
-                <span className="kpi-val urgency-tag" style={{ 
-                  background: `${getRiskColor(diagnosis.riskLevel)}20`,
-                  color: getRiskColor(diagnosis.riskLevel),
-                  borderColor: `${getRiskColor(diagnosis.riskLevel)}40`
-                }}>
-                  {diagnosis.urgency}
-                </span>
-              </div>
-              <div className="diag-kpi">
-                <span className="kpi-label">Confidence</span>
-                <span className="kpi-val">{diagnosis.confidence}%</span>
-              </div>
+          
+          {/* Section A: Agent Thinking Visualizer */}
+          <div className="console-section">
+            <div className="card-header-bar">
+              <span className="material-icons header-icon">psychology</span>
+              <h2>Agent Reasoning</h2>
             </div>
-
-            <p className="diag-summary">{diagnosis.summary}</p>
-
-            {/* Findings List */}
-            <div className="diag-findings">
-              <h4>Key Findings</h4>
-              <div className="findings-grid">
-                {diagnosis.findings.map((finding, idx) => (
-                  <div key={idx} className="finding-pill">
-                    <div className="finding-header">
-                      <strong>{finding.parameter}</strong>
-                      <span className={`finding-status ${finding.status.toLowerCase()}`}>
-                        {finding.status}
-                      </span>
+            
+            <div className="thinking-timeline">
+              <AnimatePresence>
+                {thinkingSteps.map((step) => (
+                  <motion.div 
+                    key={step.id} 
+                    className={`timeline-step ${step.status}`}
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <div className="step-marker">
+                      {step.status === 'completed' && <span className="material-icons done">check_circle</span>}
+                      {step.status === 'active' && <span className="pulse-dot active-blue" />}
+                      {step.status === 'pending' && <span className="marker-dot" />}
                     </div>
-                    <p className="finding-note">{finding.interpretation}</p>
-                  </div>
+                    <span className="step-text">{step.text}</span>
+                  </motion.div>
                 ))}
+              </AnimatePresence>
+            </div>
+          </div>
+
+          {/* Section B: Clinical Insights output */}
+          <div className="console-section insights-output">
+            <div className="card-header-bar">
+              <span className="material-icons header-icon">analytics</span>
+              <h2>Clinical Diagnostics</h2>
+              <span className="urgency-tag" style={{ border: `1px solid ${getRiskColor(diagnosis.riskLevel)}`, color: getRiskColor(diagnosis.riskLevel) }}>
+                {diagnosis.urgency}
+              </span>
+            </div>
+
+            <div className="diagnosis-box glass-card">
+              <div className="diag-overall">
+                <div className="diag-kpi">
+                  <span className="kpi-label">Risk Profile</span>
+                  <span className="kpi-val" style={{ color: getRiskColor(diagnosis.riskLevel) }}>
+                    {diagnosis.riskLevel}
+                  </span>
+                </div>
+                <div className="diag-kpi">
+                  <span className="kpi-label">AI Confidence</span>
+                  <span className="kpi-val text-blue">{diagnosis.confidence}%</span>
+                </div>
+              </div>
+
+              <div className="diag-summary">
+                <p>{diagnosis.summary}</p>
+              </div>
+
+              {diagnosis.findings.length > 0 && (
+                <div className="diag-findings">
+                  <h4>Metric Interpretations</h4>
+                  <div className="findings-grid">
+                    {diagnosis.findings.map((f, i) => (
+                      <div key={i} className="finding-pill">
+                        <strong>{f.parameter}:</strong>
+                        <span className={`finding-status ${f.status.toLowerCase()}`}>{f.status}</span>
+                        <p className="finding-note">{f.interpretation}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="diag-recommendations">
+                <h4>Suggested Action Protocols</h4>
+                <ul>
+                  {diagnosis.recommendations.map((rec, i) => (
+                    <li key={i}>
+                      <span className="material-icons">arrow_forward</span>
+                      <span>{rec}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
+          </div>
 
-            {/* Recommendations List */}
-            <div className="diag-recommendations">
-              <h4>Recommendations</h4>
-              <ul>
-                {diagnosis.recommendations.map((rec, idx) => (
-                  <li key={idx}>
-                    <span className="material-icons">arrow_forward_ios</span>
-                    {rec}
-                  </li>
-                ))}
-              </ul>
+          {/* Section C: Apple Health Tabbed Widgets (Risk, Tests, Dictation) */}
+          <div className="console-section tabs-section">
+            <div className="apple-tab-bar glass-card">
+              <button 
+                className={`tab-btn ${activeTab === 'risk' ? 'active' : ''}`}
+                onClick={() => setActiveTab('risk')}
+              >
+                Risk Profile
+              </button>
+              <button 
+                className={`tab-btn ${activeTab === 'tests' ? 'active' : ''}`}
+                onClick={() => setActiveTab('tests')}
+              >
+                Follow-ups
+              </button>
+              <button 
+                className={`tab-btn ${activeTab === 'dictation' ? 'active' : ''}`}
+                onClick={() => setActiveTab('dictation')}
+              >
+                AI Dictate
+              </button>
             </div>
-          </div>
 
-          {/* Tabs Section */}
-          <div className="apple-tab-bar">
-            <button 
-              className={`tab-btn ${activeTab === 'risk' ? 'active' : ''}`}
-              onClick={() => setActiveTab('risk')}
-            >
-              Risk Stratification
-            </button>
-            <button 
-              className={`tab-btn ${activeTab === 'tests' ? 'active' : ''}`}
-              onClick={() => setActiveTab('tests')}
-            >
-              Test Recommendations
-            </button>
-            <button 
-              className={`tab-btn ${activeTab === 'dictation' ? 'active' : ''}`}
-              onClick={() => setActiveTab('dictation')}
-            >
-              Clinical Notes
-            </button>
-          </div>
-
-          <div className="tab-content-container">
-            <AnimatePresence mode="wait">
+            <div className="tab-content-container">
               {activeTab === 'risk' && (
-                <motion.div 
-                  key="risk"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="tab-pane-content"
-                >
-                  <h4>Systemic Risk Assessment</h4>
+                <div className="tab-pane-content risk-stratification-pane">
+                  <h4>System Pathological Risks</h4>
                   <div className="system-risks-grid">
                     <div className="system-risk-item">
-                      <span>Cardiovascular</span>
+                      <span>Cardiovascular Risk</span>
                       <div className="progress-bar-wrap">
-                        <div className="progress-bar fill-red" style={{ width: `${systemRisks.cardiovascular}%` }}></div>
+                        <div className="progress-bar fill-red" style={{ width: `${systemRisks.cardiovascular}%` }} />
                       </div>
                       <span className="risk-percent-label">{systemRisks.cardiovascular}%</span>
                     </div>
+
                     <div className="system-risk-item">
-                      <span>Metabolic</span>
+                      <span>Diabetic Risk</span>
                       <div className="progress-bar-wrap">
-                        <div className="progress-bar fill-orange" style={{ width: `${systemRisks.diabetic}%` }}></div>
+                        <div className="progress-bar fill-orange" style={{ width: `${systemRisks.diabetic}%` }} />
                       </div>
                       <span className="risk-percent-label">{systemRisks.diabetic}%</span>
                     </div>
+
                     <div className="system-risk-item">
-                      <span>Renal</span>
+                      <span>Renal Risk (Kidney)</span>
                       <div className="progress-bar-wrap">
-                        <div className="progress-bar fill-blue" style={{ width: `${systemRisks.renal}%` }}></div>
+                        <div className="progress-bar fill-blue" style={{ width: `${systemRisks.renal}%` }} />
                       </div>
                       <span className="risk-percent-label">{systemRisks.renal}%</span>
                     </div>
+
                     <div className="system-risk-item">
-                      <span>Hepatic</span>
+                      <span>Hepatic Risk (Liver)</span>
                       <div className="progress-bar-wrap">
-                        <div className="progress-bar fill-yellow" style={{ width: `${systemRisks.hepatic}%` }}></div>
+                        <div className="progress-bar fill-yellow" style={{ width: `${systemRisks.hepatic}%` }} />
                       </div>
                       <span className="risk-percent-label">{systemRisks.hepatic}%</span>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               )}
 
               {activeTab === 'tests' && (
-                <motion.div 
-                  key="tests"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="tab-pane-content"
-                >
-                  <h4>Suggested Follow-up Tests</h4>
+                <div className="tab-pane-content test-recommender-pane">
+                  <h4>Suggested Laboratory Panels</h4>
                   <div className="test-recommendations-list">
-                    {testRecommendations.map((rec, idx) => (
+                    {testRecommendations.map((tr, idx) => (
                       <div key={idx} className="test-rec-item glass-card">
-                        <span className="material-icons test-rec-icon">science</span>
+                        <span className="material-icons test-rec-icon">assignment_turned_in</span>
                         <div className="test-rec-text">
-                          <h5>{rec.test}</h5>
-                          <p>{rec.rationale}</p>
+                          <h5>{tr.test}</h5>
+                          <p>{tr.rationale}</p>
                         </div>
                       </div>
                     ))}
                   </div>
-                </motion.div>
+                </div>
               )}
 
               {activeTab === 'dictation' && (
-                <motion.div 
-                  key="dictation"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="tab-pane-content notes-dictator-pane"
-                >
-                  <h4>Clinical Note Dictation</h4>
-                  <p className="pane-desc">Paste or type raw notes to format them clinically</p>
+                <div className="tab-pane-content notes-dictator-pane">
+                  <h4>Clinical Note Transcriber & Formatter</h4>
+                  <p className="pane-desc">Type raw doctor notes and click Format to output clean summaries using AI.</p>
+                  
                   <textarea
-                    className="dictation-textarea"
-                    placeholder="Enter patient notes here..."
+                    placeholder="Enter messy clinical notes (e.g. patient has jaundice symptoms, high glucose, check renal values)..."
                     value={rawNotes}
                     onChange={(e) => setRawNotes(e.target.value)}
+                    className="dictation-textarea glass-card"
                   />
+                  
                   <button 
+                    onClick={handleFormatNotes} 
                     className="format-notes-btn pill-btn"
-                    onClick={handleFormatNotes}
-                    disabled={isFormattingNotes}
+                    disabled={isFormattingNotes || !rawNotes.trim()}
                   >
-                    {isFormattingNotes ? (
-                      <><span className="btn-spinner"></span>Formatting...</>
-                    ) : (
-                      'Format Clinical Note'
-                    )}
+                    {isFormattingNotes ? 'Formatting...' : 'Format Notes with AI'}
                   </button>
 
                   {formattedNotes && (
                     <div className="formatted-notes-output glass-card">
-                      <button className="copy-notes-btn" onClick={() => {
-                        navigator.clipboard.writeText(formattedNotes);
-                        toast.success('Note copied to clipboard!');
-                      }}>
+                      <pre>{formattedNotes}</pre>
+                      <button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(formattedNotes);
+                          toast.success('Notes copied to clipboard!');
+                        }}
+                        className="copy-notes-btn"
+                      >
                         <span className="material-icons">content_copy</span>
                       </button>
-                      <pre>{formattedNotes}</pre>
                     </div>
                   )}
-                </motion.div>
+                </div>
               )}
-            </AnimatePresence>
+            </div>
           </div>
 
-          {/* Chat Console */}
-          <div className="chat-section">
+          {/* Section D: Live Chat Assistant (iMessage Style) */}
+          <div className="console-section chat-section">
             <div className="card-header-bar">
-              <div className="chat-header-wrap">
-                <span className="material-icons header-icon">chat</span>
-                <h2>Clinical Assistant</h2>
-              </div>
+              <span className="material-icons header-icon">forum</span>
+              <h2>AI Clinical Messages</h2>
+              
+              {/* Voice toggle */}
               <button 
-                className={`voice-toggle-btn ${voiceEnabled ? 'active' : ''}`}
                 onClick={() => setVoiceEnabled(!voiceEnabled)}
-                title={voiceEnabled ? "Disable Voice" : "Enable Voice"}
+                className={`voice-toggle-btn ${voiceEnabled ? 'active' : ''}`}
+                title={voiceEnabled ? 'Mute AI voice' : 'Enable AI voice reader'}
               >
-                <span className="material-icons">{voiceEnabled ? 'volume_up' : 'volume_off'}</span>
+                <span className="material-icons">
+                  {voiceEnabled ? 'volume_up' : 'volume_off'}
+                </span>
               </button>
             </div>
-            
+
             <div className="chat-messages-container apple-chat">
-              {chatMessages.map((msg, idx) => (
-                <div key={idx} className={`chat-bubble-wrap ${msg.role}`}>
-                  <div className="chat-bubble">
+              {chatMessages.map((msg, i) => (
+                <div key={i} className={`chat-bubble-wrap ${msg.role}`}>
+                  <div className="chat-bubble glass-card">
                     <p>{msg.content}</p>
-                    {msg.role === 'assistant' && voiceEnabled && (
-                      <button className="bubble-speak-btn" onClick={() => speakText(msg.content)}>
-                        <span className="material-icons">volume_up</span>
+                    {msg.role === 'assistant' && (
+                      <button 
+                        onClick={() => speakText(msg.content)} 
+                        className="bubble-speak-btn"
+                        title="Speak aloud"
+                      >
+                        <span className="material-icons">play_arrow</span>
                       </button>
                     )}
                   </div>
                 </div>
               ))}
               {isChatTyping && (
-                <div className="chat-bubble-wrap assistant">
-                  <div className="chat-bubble typing-bubble">
-                    <div className="dot"></div>
-                    <div className="dot"></div>
-                    <div className="dot"></div>
+                <div className="chat-bubble-wrap assistant typing">
+                  <div className="chat-bubble glass-card typing-bubble">
+                    <span className="dot" />
+                    <span className="dot" />
+                    <span className="dot" />
                   </div>
                 </div>
               )}
               <div ref={chatEndRef} />
             </div>
 
+            {/* Quick Prompts */}
             <div className="quick-prompts">
-              <span className="prompt-chip" onClick={() => setChatInput('What is the normal hemoglobin range?')}>Normal hemoglobin?</span>
-              <span className="prompt-chip" onClick={() => setChatInput('Interpret high WBC count')}>High WBC?</span>
-              <span className="prompt-chip" onClick={() => setChatInput('Explain platelet function')}>Platelet function?</span>
+              <button 
+                onClick={() => setChatInput("Explain how WBC count correlates with infections.")}
+                className="prompt-chip"
+              >
+                Infection & WBC
+              </button>
+              <button 
+                onClick={() => setChatInput("What are the primary clinical indications of severe anemia?")}
+                className="prompt-chip"
+              >
+                Anemia Indicators
+              </button>
+              <button 
+                onClick={() => setChatInput("Describe thrombocytopenia and physical symptoms.")}
+                className="prompt-chip"
+              >
+                Thrombocytopenia
+              </button>
             </div>
 
-            <form onSubmit={handleChatSubmit} className="chat-input-form">
+            <form onSubmit={handleChatSubmit} className="chat-input-form glass-card">
               <input 
                 type="text" 
-                className="chat-input" 
-                placeholder="Ask a clinical question..." 
+                placeholder="Ask clinical questions..."
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
+                className="chat-input"
+                disabled={isChatTyping}
               />
-              <button type="submit" className="chat-send-btn" disabled={!chatInput.trim()}>
-                <span className="material-icons">send</span>
+              <button type="submit" className="chat-send-btn" disabled={isChatTyping || !chatInput.trim()}>
+                <span className="material-icons">arrow_upward</span>
               </button>
             </form>
           </div>

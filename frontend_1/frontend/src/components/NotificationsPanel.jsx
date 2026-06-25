@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotifications } from '../context/NotificationsContext';
 import './NotificationsPanel.css';
@@ -23,6 +23,13 @@ const timeAgo = (date) => {
 const NotificationsPanel = () => {
   const { notifications, isOpen, closePanel, markRead, markAllRead, clearAll, unreadCount } = useNotifications();
   const panelRef = useRef(null);
+  const [activeFilter, setActiveFilter] = useState('All');
+
+  const filteredNotifications = notifications.filter(n => {
+    if (activeFilter === 'Unread') return !n.read;
+    if (activeFilter === 'Critical') return n.type === 'critical';
+    return true;
+  });
 
   /* Close on outside click */
   useEffect(() => {
@@ -94,20 +101,26 @@ const NotificationsPanel = () => {
             {/* Filter tabs */}
             <div className="notif-tabs">
               {['All', 'Unread', 'Critical'].map(tab => (
-                <button key={tab} className={`notif-tab ${tab === 'All' ? 'active' : ''}`}>{tab}</button>
+                <button 
+                  key={tab} 
+                  className={`notif-tab ${activeFilter === tab ? 'active' : ''}`}
+                  onClick={() => setActiveFilter(tab)}
+                >
+                  {tab}
+                </button>
               ))}
             </div>
 
             {/* List */}
             <div className="notif-list">
-              {notifications.length === 0 ? (
+              {filteredNotifications.length === 0 ? (
                 <div className="notif-empty">
                   <span className="material-icons notif-empty-icon">notifications_none</span>
                   <p>No notifications</p>
                 </div>
               ) : (
                 <AnimatePresence>
-                  {notifications.map((n, i) => {
+                  {filteredNotifications.map((n, i) => {
                     const meta = TYPE_META[n.type] || TYPE_META.info;
                     return (
                       <motion.div
