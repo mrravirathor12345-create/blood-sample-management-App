@@ -1,0 +1,777 @@
+.apt-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  padding: var(--sp-6);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.apt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--sp-5);
+  flex-wrap: wrap;
+}
+
+.apt-super {
+  margin: 0 0 var(--sp-2) 0;
+  font-size: var(--fs-sm);
+  color: var(--apple-pink);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-wider);
+  font-weight: 700;
+}
+
+.apt-header h1 {
+  margin: 0;
+  font-size: var(--fs-4xl);
+  color: var(--label-primary);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.apt-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.apt-today-count {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-5);
+  border-radius: var(--r-xl);
+  background: var(--bg-secondary);
+  border: 1px solid var(--separator);
+}
+
+.apt-today-count strong {
+  display: block;
+  font-size: var(--fs-2xl);
+  font-weight: 800;
+  color: var(--label-primary);
+  line-height: 1;
+}
+
+.apt-today-count span {
+  font-size: var(--fs-sm);
+  color: var(--label-tertiary);
+}
+
+.apt-new-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-5);
+  border-radius: var(--r-lg);
+  border: none;
+  background: linear-gradient(135deg, var(--apple-pink), var(--apple-red));
+  color: white;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(255, 45, 85, 0.25);
+  transition: all var(--transition-fast);
+}
+
+.apt-new-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(255, 45, 85, 0.35);
+}
+
+.apt-body {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: var(--sp-6);
+  align-items: start;
+}
+
+.apt-calendar {
+  padding: var(--sp-6);
+  border-radius: var(--r-xl);
+  background: var(--bg-secondary);
+  border: 1px solid var(--separator);
+}
+
+.cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-5);
+}
+
+.cal-nav-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--separator);
+  background: var(--bg-tertiary);
+  color: var(--label-secondary);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.cal-nav-btn:hover {
+  background: rgba(255, 45, 85, 0.12);
+  color: var(--apple-pink);
+  transform: scale(1.06);
+  border-color: rgba(255, 45, 85, 0.3);
+}
+
+.cal-title {
+  margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--label-primary);
+}
+
+.cal-day-headers {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--sp-1);
+  margin-bottom: var(--sp-2);
+}
+
+.cal-day-header {
+  text-align: center;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--label-tertiary);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-wider);
+  padding: var(--sp-2) 0;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--sp-1);
+}
+
+.cal-cell {
+  aspect-ratio: 1;
+  border-radius: var(--r-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: var(--sp-2) var(--sp-1) var(--sp-1);
+  cursor: pointer;
+  position: relative;
+  transition: all var(--transition-fast);
+  overflow: hidden;
+  min-height: 60px;
+}
+
+.cal-cell:not(.empty):hover {
+  background: rgba(255, 45, 85, 0.1);
+  transform: scale(1.04);
+}
+
+.cal-cell.empty {
+  cursor: default;
+  pointer-events: none;
+}
+
+.cal-cell.today {
+  background: rgba(255, 45, 85, 0.14);
+  border: 1px solid rgba(255, 45, 85, 0.3);
+}
+
+.cal-cell.selected {
+  background: rgba(255, 45, 85, 0.2);
+  border: 1px solid rgba(255, 45, 85, 0.5);
+  box-shadow: 0 0 0 2px rgba(255, 45, 85, 0.15);
+}
+
+.cal-cell.past {
+  opacity: 0.45;
+}
+
+.cal-day-num {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--label-secondary);
+  line-height: 1;
+}
+
+.cal-cell.today .cal-day-num {
+  color: var(--apple-pink);
+  font-weight: 800;
+}
+
+.cal-dots {
+  display: flex;
+  gap: var(--sp-1);
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: var(--sp-2);
+}
+
+.cal-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.cal-dot.scheduled {
+  background: var(--apple-blue);
+}
+
+.cal-dot.confirmed {
+  background: var(--apple-green);
+}
+
+.cal-dot.cancelled {
+  background: var(--apple-red);
+}
+
+.cal-dot-more {
+  font-size: var(--fs-xs);
+  color: var(--label-tertiary);
+}
+
+.cal-add-btn {
+  position: absolute;
+  bottom: var(--sp-1);
+  right: var(--sp-1);
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-sm);
+  background: none;
+  border: none;
+  color: var(--label-tertiary);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.cal-add-btn:hover {
+  color: var(--apple-pink);
+  background: rgba(255, 45, 85, 0.1);
+}
+
+.cal-legend {
+  display: flex;
+  gap: var(--sp-4);
+  margin-top: var(--sp-4);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--separator);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--label-secondary);
+  font-weight: 600;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.apt-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.apt-filter {
+  padding: var(--sp-5);
+  border-radius: var(--r-xl);
+  background: var(--bg-secondary);
+  border: 1px solid var(--separator);
+}
+
+.filter-label {
+  font-size: var(--fs-sm);
+  color: var(--label-secondary);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--ls-wider);
+}
+
+.filter-tabs {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+
+.filter-tab {
+  flex: 1;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-full);
+  border: 1px solid var(--separator);
+  background: var(--bg-tertiary);
+  color: var(--label-secondary);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filter-tab:hover {
+  background: var(--fill-tertiary);
+  color: var(--label-primary);
+}
+
+.filter-tab.active {
+  background: linear-gradient(135deg, var(--apple-pink), var(--apple-red));
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 15px rgba(255, 45, 85, 0.25);
+}
+
+.apt-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  max-height: 65vh;
+  overflow-y: auto;
+  padding-right: var(--sp-1);
+}
+
+.apt-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.apt-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 45, 85, 0.25);
+  border-radius: 999px;
+}
+
+.apt-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-8) var(--sp-6);
+  border-radius: var(--r-xl);
+  background: var(--bg-secondary);
+  border: 1px solid var(--separator);
+  color: var(--label-tertiary);
+  font-size: var(--fs-md);
+  text-align: center;
+}
+
+.apt-empty .material-icons {
+  font-size: 3rem;
+  color: rgba(255, 45, 85, 0.25);
+}
+
+.apt-empty-btn {
+  padding: var(--sp-2) var(--sp-5);
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(255, 45, 85, 0.22);
+  background: rgba(255, 45, 85, 0.1);
+  color: var(--apple-pink);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.apt-empty-btn:hover {
+  background: rgba(255, 45, 85, 0.18);
+}
+
+.apt-item {
+  padding: var(--sp-5);
+  border-radius: var(--r-xl);
+  background: var(--bg-secondary);
+  border: 1px solid var(--separator);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  transition: all var(--transition-fast);
+}
+
+.apt-item:hover {
+  border-color: rgba(255, 45, 85, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.apt-item-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.apt-time-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--label-primary);
+  flex: 1;
+}
+
+.apt-time-badge .material-icons {
+  font-size: 1.1rem;
+  color: var(--apple-pink);
+}
+
+.apt-status-badge {
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--r-full);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--ls-wider);
+}
+
+.apt-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.apt-patient {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--label-primary);
+}
+
+.apt-detail {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--label-secondary);
+}
+
+.apt-patient .material-icons,
+.apt-detail .material-icons {
+  font-size: 1rem;
+  color: rgba(255, 45, 85, 0.55);
+}
+
+.apt-item-actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.apt-confirm-btn,
+.apt-cancel-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-md);
+  border: none;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.apt-confirm-btn {
+  background: rgba(52, 199, 89, 0.14);
+  color: var(--apple-green);
+}
+
+.apt-confirm-btn:hover {
+  background: rgba(52, 199, 89, 0.22);
+  transform: translateY(-1px);
+}
+
+.apt-cancel-btn {
+  background: rgba(255, 45, 85, 0.12);
+  color: var(--apple-pink);
+}
+
+.apt-cancel-btn:hover {
+  background: rgba(255, 45, 85, 0.2);
+  transform: translateY(-1px);
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.apt-modal {
+  width: min(620px, calc(100vw - 32px));
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: var(--r-xl);
+  padding: var(--sp-6);
+  background: var(--bg-secondary);
+  border: 1px solid var(--separator);
+  box-shadow: var(--shadow-xl);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--sp-5);
+  padding-bottom: var(--sp-4);
+  border-bottom: 1px solid var(--separator);
+}
+
+.modal-header h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  font-size: var(--fs-xl);
+  color: var(--label-primary);
+  font-weight: 700;
+}
+
+.modal-header h2 .material-icons {
+  color: var(--apple-pink);
+}
+
+.modal-close {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-md);
+  border: none;
+  background: var(--bg-tertiary);
+  color: var(--label-secondary);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.modal-close:hover {
+  background: rgba(255, 45, 85, 0.16);
+  color: var(--apple-pink);
+  transform: rotate(90deg);
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.modal-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-3);
+}
+
+.modal-field label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--label-secondary);
+}
+
+.modal-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.modal-input-icon {
+  position: absolute;
+  left: var(--sp-3);
+  color: var(--label-tertiary);
+  font-size: 1.1rem;
+  pointer-events: none;
+  transition: color var(--transition-fast);
+}
+
+.modal-input-wrap:focus-within .modal-input-icon {
+  color: var(--apple-pink);
+}
+
+.modal-input,
+.modal-select {
+  width: 100%;
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) 48px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--separator);
+  background: var(--bg-tertiary);
+  color: var(--label-primary);
+  font-size: var(--fs-md);
+  outline: none;
+  transition: all var(--transition-fast);
+  box-sizing: border-box;
+}
+
+.modal-input:focus,
+.modal-select:focus {
+  border-color: var(--apple-pink);
+  box-shadow: 0 0 0 2px rgba(255, 45, 85, 0.15);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--separator);
+}
+
+.modal-cancel-btn {
+  padding: var(--sp-3) var(--sp-5);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--separator);
+  background: var(--bg-tertiary);
+  color: var(--label-primary);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.modal-cancel-btn:hover {
+  background: var(--fill-tertiary);
+  transform: translateY(-1px);
+}
+
+.modal-save-btn {
+  padding: var(--sp-3) var(--sp-5);
+  border-radius: var(--r-lg);
+  border: none;
+  background: linear-gradient(135deg, var(--apple-pink), var(--apple-red));
+  color: white;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(255, 45, 85, 0.25);
+  transition: all var(--transition-fast);
+}
+
+.modal-save-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(255, 45, 85, 0.35);
+}
+
+.time-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: var(--sp-2);
+}
+
+.time-slot-btn {
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--separator);
+  background: var(--bg-tertiary);
+  color: var(--label-secondary);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.time-slot-btn:hover {
+  background: var(--fill-tertiary);
+  color: var(--label-primary);
+}
+
+.time-slot-btn.selected {
+  background: linear-gradient(135deg, var(--apple-pink), var(--apple-red));
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 15px rgba(255, 45, 85, 0.25);
+}
+
+.status-scheduled {
+  background: rgba(0, 122, 255, 0.14) !important;
+  color: var(--apple-blue) !important;
+}
+
+.status-confirmed {
+  background: rgba(52, 199, 89, 0.14) !important;
+  color: var(--apple-green) !important;
+}
+
+.status-cancelled {
+  background: rgba(255, 59, 48, 0.14) !important;
+  color: var(--apple-red) !important;
+}
+
+@media (max-width: 1200px) {
+  .apt-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .apt-page {
+    padding: var(--sp-4);
+  }
+
+  .apt-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-4);
+  }
+
+  .apt-header h1 {
+    font-size: var(--fs-2xl);
+  }
+
+  .apt-body {
+    gap: var(--sp-4);
+  }
+
+  .apt-calendar,
+  .apt-filter,
+  .apt-item {
+    padding: var(--sp-4);
+  }
+
+  .modal-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .cal-day-header {
+    font-size: 0.65rem;
+  }
+
+  .cal-cell {
+    min-height: 48px;
+    padding: var(--sp-1) 0;
+  }
+
+  .cal-day-num {
+    font-size: var(--fs-sm);
+  }
+
+  .cal-legend {
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+
+  .legend-item {
+    font-size: var(--fs-xs);
+  }
+}

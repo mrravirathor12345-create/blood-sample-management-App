@@ -1,0 +1,751 @@
+/* =========================================================
+   PatientRegistration.css — Neuro-Glass Design System
+   BloodLab Elite | Patient Registration Module
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+/* ── Root Tokens ─────────────────────────────────────────── */
+:root {
+  --bg-base: #06020e;
+  --bg-surface: rgba(255, 255, 255, 0.03);
+  --bg-elevated: rgba(255, 255, 255, 0.06);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-glass: rgba(255, 255, 255, 0.12);
+  --primary: #ff3c6e;
+  --primary-dark: #c4003a;
+  --accent: #9b59b6;
+  --cyan: #00d2ff;
+  --text-primary: #f0eaf8;
+  --text-secondary: rgba(240, 234, 248, 0.55);
+  --text-muted: rgba(240, 234, 248, 0.35);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --shadow-glow-primary: 0 0 24px rgba(255, 60, 110, 0.25);
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.45);
+  --transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --font: 'Outfit', system-ui, sans-serif;
+}
+
+/* ── Base Reset ──────────────────────────────────────────── */
+.patient-registration-page *,
+.patient-registration-page *::before,
+.patient-registration-page *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.patient-registration-page {
+  min-height: 100vh;
+  background: var(--bg-base);
+  font-family: var(--font);
+  color: var(--text-primary);
+  padding: 32px 24px 64px;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ── Aurora Background ───────────────────────────────────── */
+.patient-registration-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 20% 10%, rgba(155, 89, 182, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 80% 90%, rgba(255, 60, 110, 0.1) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 60% at 60% 40%, rgba(0, 210, 255, 0.05) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.patient-registration-page > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Page Header ─────────────────────────────────────────── */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 36px;
+  flex-wrap: wrap;
+}
+
+.page-header-content {}
+
+.page-header h1 {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  background: linear-gradient(135deg, #ff3c6e 0%, #9b59b6 60%, #00d2ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.page-header .page-subtitle {
+  margin-top: 6px;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+/* ── Buttons ─────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 11px 22px;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  transition: var(--transition-spring);
+  text-decoration: none;
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 0.01em;
+}
+
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.btn:hover::after { opacity: 1; }
+
+.btn-primary {
+  background: linear-gradient(135deg, #ff3c6e, #c4003a);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(255, 60, 110, 0.35);
+}
+
+.btn-primary:hover {
+  filter: brightness(1.12);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(255, 60, 110, 0.5);
+}
+
+.btn-primary:active { transform: translateY(0); }
+
+.btn-secondary {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-glass);
+  backdrop-filter: blur(12px);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid rgba(255, 60, 110, 0.4);
+}
+
+.btn-danger:hover {
+  background: rgba(255, 60, 110, 0.12);
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.btn-icon {
+  padding: 10px 14px;
+}
+
+.btn svg { flex-shrink: 0; }
+
+/* ── Registration Container ──────────────────────────────── */
+.registration-container {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── Glass Card ──────────────────────────────────────────── */
+.glass-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: var(--shadow-glass), inset 0 1px 0 rgba(255,255,255,0.07);
+  overflow: hidden;
+}
+
+/* ── Section Header (inside card) ───────────────────────── */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 22px 28px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: linear-gradient(90deg, rgba(255,60,110,0.04) 0%, transparent 70%);
+}
+
+.section-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(255,60,110,0.18), rgba(155,89,182,0.18));
+  border: 1px solid rgba(255,60,110,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.section-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ── Form Grid ───────────────────────────────────────────── */
+.form-body {
+  padding: 28px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px 24px;
+}
+
+.form-grid-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.form-grid-full {
+  grid-column: 1 / -1;
+}
+
+/* ── Form Group ──────────────────────────────────────────── */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+.form-label .required {
+  color: var(--primary);
+  margin-left: 3px;
+}
+
+/* ── Inputs ──────────────────────────────────────────────── */
+.form-input,
+.form-select,
+.form-textarea {
+  font-family: var(--font);
+  font-size: 0.92rem;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base), background var(--transition-base);
+  outline: none;
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder { color: var(--text-muted); }
+
+.form-input:hover,
+.form-select:hover,
+.form-textarea:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  border-color: #ff3c6e;
+  box-shadow: 0 0 0 3px rgba(255, 60, 110, 0.15);
+  background: rgba(255, 60, 110, 0.04);
+}
+
+.form-select {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(240,234,248,0.4)' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 40px;
+}
+
+.form-select option {
+  background: #1a0f2e;
+  color: var(--text-primary);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.6;
+}
+
+/* ── Validation States ───────────────────────────────────── */
+.form-input.is-valid,
+.form-select.is-valid {
+  border-color: rgba(46, 213, 115, 0.5);
+  box-shadow: 0 0 0 3px rgba(46, 213, 115, 0.1);
+}
+
+.form-input.is-invalid,
+.form-select.is-invalid {
+  border-color: rgba(255, 60, 110, 0.6);
+  box-shadow: 0 0 0 3px rgba(255, 60, 110, 0.12);
+}
+
+.form-error {
+  font-size: 0.78rem;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.form-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* ── Radio & Checkbox Groups ─────────────────────────────── */
+.radio-group,
+.checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.radio-option,
+.checkbox-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition-base);
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.radio-option:hover,
+.checkbox-option:hover {
+  border-color: rgba(255,60,110,0.3);
+  background: rgba(255,60,110,0.05);
+  color: var(--text-primary);
+}
+
+.radio-option input,
+.checkbox-option input {
+  accent-color: var(--primary);
+  width: 15px;
+  height: 15px;
+}
+
+.radio-option.selected,
+.checkbox-option.selected {
+  border-color: rgba(255,60,110,0.5);
+  background: rgba(255,60,110,0.08);
+  color: var(--text-primary);
+}
+
+/* ── Date Input ──────────────────────────────────────────── */
+.form-input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.6);
+  cursor: pointer;
+}
+
+/* ── Phone Input Wrapper ─────────────────────────────────── */
+.phone-input-wrapper {
+  display: flex;
+  gap: 8px;
+}
+
+.phone-prefix {
+  flex-shrink: 0;
+  width: 80px;
+}
+
+/* ── Submit Section ──────────────────────────────────────── */
+.form-submit-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  padding: 24px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.submit-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.submit-info-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0, 210, 255, 0.1);
+  border: 1px solid rgba(0,210,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.submit-info-text {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.submit-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* ── Progress Stepper ────────────────────────────────────── */
+.form-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 28px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-xl);
+  padding: 16px 24px;
+  backdrop-filter: blur(20px);
+  overflow-x: auto;
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.step-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 2px solid var(--border-glass);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  transition: var(--transition-base);
+  flex-shrink: 0;
+}
+
+.step-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: color var(--transition-base);
+  white-space: nowrap;
+}
+
+.step-item.active .step-dot {
+  background: linear-gradient(135deg, #ff3c6e, #9b59b6);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 0 16px rgba(255,60,110,0.4);
+}
+
+.step-item.active .step-label { color: var(--text-primary); }
+
+.step-item.completed .step-dot {
+  background: rgba(46, 213, 115, 0.2);
+  border-color: rgba(46,213,115,0.4);
+  color: #2ed573;
+}
+
+.step-item.completed .step-label { color: #2ed573; }
+
+.step-connector {
+  flex: 1;
+  height: 2px;
+  background: var(--border-subtle);
+  margin: 0 8px;
+  min-width: 20px;
+}
+
+.step-connector.completed {
+  background: linear-gradient(90deg, rgba(46,213,115,0.5), rgba(255,60,110,0.3));
+}
+
+/* ── Badges / Status Pills ───────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 4px 10px;
+  border-radius: 30px;
+  white-space: nowrap;
+}
+
+.badge-success {
+  background: rgba(46, 213, 115, 0.12);
+  color: #2ed573;
+  border: 1px solid rgba(46,213,115,0.25);
+  box-shadow: 0 0 10px rgba(46,213,115,0.15);
+}
+
+.badge-warning {
+  background: rgba(255, 171, 0, 0.12);
+  color: #ffab00;
+  border: 1px solid rgba(255,171,0,0.25);
+  box-shadow: 0 0 10px rgba(255,171,0,0.15);
+}
+
+.badge-danger {
+  background: rgba(255, 60, 110, 0.12);
+  color: #ff3c6e;
+  border: 1px solid rgba(255,60,110,0.25);
+  box-shadow: 0 0 10px rgba(255,60,110,0.15);
+}
+
+.badge-info {
+  background: rgba(0, 210, 255, 0.12);
+  color: #00d2ff;
+  border: 1px solid rgba(0,210,255,0.25);
+  box-shadow: 0 0 10px rgba(0,210,255,0.15);
+}
+
+.badge-purple {
+  background: rgba(155, 89, 182, 0.15);
+  color: #b97edc;
+  border: 1px solid rgba(155,89,182,0.3);
+  box-shadow: 0 0 10px rgba(155,89,182,0.15);
+}
+
+/* ── Skeleton Loading ────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
+}
+
+.skeleton {
+  border-radius: var(--radius-md);
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.04) 25%,
+    rgba(255,255,255,0.09) 50%,
+    rgba(255,255,255,0.04) 75%
+  );
+  background-size: 600px 100%;
+  animation: shimmer 1.6s infinite linear;
+}
+
+.skeleton-text { height: 14px; }
+.skeleton-title { height: 24px; }
+.skeleton-input { height: 46px; }
+
+/* ── Empty State ─────────────────────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  text-align: center;
+  gap: 14px;
+}
+
+.empty-state-icon {
+  font-size: 3rem;
+  opacity: 0.25;
+}
+
+.empty-state-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.empty-state-text {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  max-width: 340px;
+  line-height: 1.6;
+}
+
+/* ── Avatar / Initials ───────────────────────────────────── */
+.patient-avatar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 28px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.avatar-circle {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255,60,110,0.2), rgba(155,89,182,0.2));
+  border: 2px solid rgba(255,60,110,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.avatar-upload-btn {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 1px dashed var(--border-glass);
+  border-radius: var(--radius-sm);
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.avatar-upload-btn:hover {
+  border-color: rgba(255,60,110,0.4);
+  color: var(--primary);
+}
+
+/* ── Alert / Notice ──────────────────────────────────────── */
+.form-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  font-size: 0.87rem;
+  line-height: 1.55;
+}
+
+.form-alert-info {
+  background: rgba(0,210,255,0.07);
+  border: 1px solid rgba(0,210,255,0.2);
+  color: rgba(0,210,255,0.9);
+}
+
+.form-alert-warning {
+  background: rgba(255,171,0,0.07);
+  border: 1px solid rgba(255,171,0,0.2);
+  color: rgba(255,171,0,0.9);
+}
+
+/* ── Divider ─────────────────────────────────────────────── */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-subtle), transparent);
+  margin: 4px 0;
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .patient-registration-page { padding: 20px 14px 48px; }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .page-header {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .form-submit-section {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .submit-actions {
+    justify-content: flex-end;
+  }
+
+  .form-stepper {
+    padding: 12px 16px;
+  }
+
+  .step-label { display: none; }
+}
+
+@media (max-width: 480px) {
+  .form-body { padding: 18px 16px; }
+  .section-header { padding: 18px 16px; }
+  .patient-avatar { padding: 16px; }
+}

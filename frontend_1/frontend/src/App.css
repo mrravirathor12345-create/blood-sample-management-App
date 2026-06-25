@@ -1,0 +1,59 @@
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow-x: hidden;
+  overflow-y: visible; /* Allow dropdowns to show */
+}
+
+.main-content {
+  display: flex;
+  min-height: calc(100vh - 80px);
+}
+
+.content {
+  flex: 1;
+  padding: 24px;
+  min-height: calc(100vh - 80px);
+  transition: padding 0.3s ease;
+}
+
+.content-authenticated {
+  padding: 28px 32px 32px;
+}
+
+.page-shell {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.route-loader {
+  min-height: calc(100vh - 80px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+@media (max-width: 1024px) {
+  .main-content {
+    flex-direction: column;
+  }
+
+  .content {
+    padding: 22px;
+  }
+}
+
+@media (max-width: 768px) {
+  .content {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .content {
+    padding: 14px;
+  }
+}

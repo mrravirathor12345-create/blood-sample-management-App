@@ -1,4 +1,44 @@
 const Report = require('../models/Report');
+const https = require('https');
+
+// Helper to make HTTPS requests to Gemini API (zero-dependency)
+function geminiPost(url, data) {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const bodyStr = JSON.stringify(data);
+    
+    const options = {
+      hostname: urlObj.hostname,
+      path: urlObj.pathname + urlObj.search,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(bodyStr)
+      }
+    };
+    
+    const req = https.request(options, (res) => {
+      let responseBody = '';
+      res.on('data', (chunk) => {
+        responseBody += chunk;
+      });
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(responseBody);
+        } else {
+          reject(new Error(`HTTP Error ${res.statusCode}: ${responseBody}`));
+        }
+      });
+    });
+    
+    req.on('error', (err) => {
+      reject(err);
+    });
+    
+    req.write(bodyStr);
+    req.end();
+  });
+}
 
 /**
  * AI Service for analyzing test results and identifying abnormalities
@@ -10,6 +50,74 @@ class AIService {
    * @returns {Object} Analysis results with risk levels and recommendations
    */
   static async analyzeReport(report) {
+    const geminiApiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    if (geminiApiKey) {
+      try {
+        const patientInfo = report.patient ? {
+          age: report.patient.dateOfBirth ? Math.floor((new Date() - new Date(report.patient.dateOfBirth)) / 31557600000) : 'Unknown',
+          gender: report.patient.gender || 'Unknown',
+          bloodGroup: report.patient.bloodGroup || 'Unknown'
+        } : {};
+        
+        const testList = report.testResults.map(tr => ({
+          testName: tr.test ? tr.test.testName : 'Unknown',
+          value: tr.resultValue,
+          unit: tr.unit,
+          status: tr.status
+        }));
+        
+        const systemPrompt = `You are a clinical laboratory AI assistant. Analyze these patient details and blood test results.
+Identify abnormalities and output a JSON response matching the database structure.
+Ensure your response is valid JSON and only contains this object structure:
+{
+  "hasAbnormalities": true/false,
+  "flaggedParameters": ["Hemoglobin", "Glucose"],
+  "riskLevel": "Low" or "Medium" or "High",
+  "recommendations": ["recommendation 1", "recommendation 2"],
+  "confidenceScore": 0 to 100
+}`;
+
+        const userMessage = `Patient Info: ${JSON.stringify(patientInfo)}
+Test Results: ${JSON.stringify(testList)}`;
+
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+        
+        const payload = {
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: userMessage }]
+            }
+          ],
+          systemInstruction: {
+            parts: [{ text: systemPrompt }]
+          },
+          generationConfig: {
+            temperature: 0.15,
+            responseMimeType: 'application/json'
+          }
+        };
+        
+        const responseText = await geminiPost(url, payload);
+        const data = JSON.parse(responseText);
+        const content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const result = JSON.parse(jsonMatch[0]);
+          return {
+            hasAbnormalities: !!result.hasAbnormalities,
+            flaggedParameters: Array.isArray(result.flaggedParameters) ? result.flaggedParameters : [],
+            riskLevel: ['Low', 'Medium', 'High'].includes(result.riskLevel) ? result.riskLevel : 'Low',
+            recommendations: Array.isArray(result.recommendations) ? result.recommendations : [],
+            confidenceScore: typeof result.confidenceScore === 'number' ? result.confidenceScore : 90
+          };
+        }
+      } catch (error) {
+        console.error('Backend Gemini AI analysis failed, falling back to rule engine:', error.message);
+      }
+    }
+
     try {
       const analysis = {
         hasAbnormalities: false,
